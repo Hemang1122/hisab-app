@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBCL Hisab</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="header">
+<div><h1>Shree Balaji Clinical Lab</h1><small>Hisab Management System</small></div>
+<div><span id="dbStatus" class="db-status db-loading">Connecting...</span></div>
+</div>
+
+<nav>
+<a href="#" onclick="showTab('entry');return false" class="active">Naya Entry</a>
+<a href="#" onclick="showTab('register');return false">Register</a>
+<a href="#" onclick="showTab('hisab');return false">Hisab Print</a>
+<a href="#" onclick="showTab('revenue');return false">Revenue</a>
+<a href="#" onclick="showTab('ratelist');return false">Rate List</a>
+<a href="#" onclick="showTab('doctors');return false">Doctors & Staff</a>
+<a href="#" onclick="showTab('settings');return false">Settings</a>
+</nav>
+
+<!-- TAB: Naya Entry -->
+<div id="tab-entry" class="tab active">
+<h2>Naya Entry</h2>
+<div class="entry-layout">
+<div class="entry-form">
+<div class="card">
+<div class="row">
+<div>
+<label>Date</label>
+<div class="date-picker">
+<select id="eMonth" onchange="updateDateDropdown('e');refreshSidebar()"></select>
+<select id="eDay" onchange="refreshSidebar()"></select>
+</div>
+</div>
+<div><label>Doctor / Hospital</label>
+<select id="eDoctor"><option value="">-- Select --</option></select></div>
+</div>
+<div class="row">
+<div><label>Patient Ka Naam</label><input id="eName" placeholder="Patient name"></div>
+<div style="max-width:80px"><label>Age</label><input id="eAge" type="number" placeholder="Age"></div>
+<div style="max-width:80px"><label>Gender</label>
+<select id="eGender"><option>M</option><option>F</option><option>O</option></select></div>
+</div>
+<hr>
+<label>Tests (Rate List: <span id="rlName">-</span>)</label>
+<div id="testCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px"></div>
+<div class="total-bar" id="entryTotals" style="display:none">
+<span>Subtotal: &#8377;<b id="eSubtotal">0</b></span>
+<span>Discount: &#8377;<b id="eDiscAmt">0</b></span>
+<span>Total: &#8377;<b id="eTotal">0</b></span>
+</div>
+<hr>
+<div class="row">
+<div><label>Discount</label>
+<div class="row">
+<input id="eDisc" type="number" value="0" oninput="calcEntry()">
+<select id="eDiscType" onchange="calcEntry()" style="max-width:65px"><option value="rs">&#8377;</option><option value="pc">%</option></select>
+</div></div>
+<div><label>Payment</label>
+<div class="pay-section">
+<select id="ePayStatus" onchange="togglePayFields()">
+<option value="paid">Paid</option>
+<option value="partial">Balance</option>
+</select>
+<input id="ePaid" type="number" value="0" placeholder="Paid &#8377;" oninput="calcEntry()" style="display:none">
+<span id="balDisplay"></span>
+</div></div>
+</div>
+<div class="row">
+<div><label>Payment Mode</label>
+<select id="ePayMode"><option>Cash</option><option>GPay</option><option>PhonePe</option><option>UPI</option><option>Card</option><option>Online</option><option>Other</option></select></div>
+<div><label>Collection Boy</label>
+<select id="eCollector"><option value="">-- None --</option></select></div>
+</div>
+<div style="margin-top:10px;text-align:right">
+<button class="btn btn-primary" onclick="saveEntry()">&#128190; Save Entry</button>
+</div>
+</div>
+</div>
+<!-- RIGHT SIDE: Today's entries -->
+<div class="entry-sidebar">
+<div class="card" style="padding:10px">
+<div class="sidebar-title">&#128203; Aaj Ki Entries (<span id="sidebarDate">-</span>)</div>
+<div id="sidebarEntries"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- TAB: Register -->
+<div id="tab-register" class="tab">
+<h2>Register</h2>
+<div class="row no-print" style="margin-bottom:10px">
+<div><div class="date-picker">
+<select id="regMonth" onchange="updateDateDropdown('reg');renderRegister()"></select>
+<select id="regDay" onchange="renderRegister()"></select>
+</div></div>
+<div><select id="regDocFilter" onchange="renderRegister()"><option value="">Sabhi Doctors</option></select></div>
+<div><input id="regSearch" placeholder="Search naam..." oninput="renderRegister()"></div>
+</div>
+<div id="registerList"></div>
+</div>
+
+<!-- TAB: Hisab Print -->
+<div id="tab-hisab" class="tab">
+<h2>Hisab Print</h2>
+<div class="card no-print">
+<div class="row">
+<div><label>Date From</label><input type="date" id="hFrom"></div>
+<div><label>Date To</label><input type="date" id="hTo"></div>
+</div>
+<div class="row">
+<div><label>Doctor / Hospital</label>
+<select id="hDoctor"><option value="">-- Select --</option></select></div>
+</div>
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="generateHisab()">&#128203; Generate Hisab</button>
+<button class="btn btn-secondary" onclick="printHisab()" style="margin-left:8px">&#128424; Print</button>
+</div>
+</div>
+<div id="hisabResult"></div>
+</div>
+
+<!-- TAB: Revenue -->
+<div id="tab-revenue" class="tab">
+<h2>Revenue Dashboard</h2>
+<div id="revContent" style="display:none">
+<div class="card no-print">
+<div class="row">
+<div><label>Date From</label><input type="date" id="revFrom"></div>
+<div><label>Date To</label><input type="date" id="revTo"></div>
+<div style="align-self:end"><button class="btn btn-primary" onclick="showRevenue()">Show</button></div>
+</div>
+</div>
+<div id="revenueResult"></div>
+</div>
+</div>
+
+<!-- TAB: Rate List -->
+<div id="tab-ratelist" class="tab">
+<h2>Rate Lists</h2>
+<button class="btn btn-primary no-print" onclick="openRLModal()">+ Nayi Rate List</button>
+<div id="rateListsView" style="margin-top:12px"></div>
+</div>
+
+<!-- TAB: Doctors & Staff -->
+<div id="tab-doctors" class="tab">
+<h2>Doctors & Hospitals</h2>
+<button class="btn btn-primary no-print" onclick="openDocModal()">+ Naya Doctor / Hospital</button>
+<div id="doctorsList" style="margin-top:12px"></div>
+<hr>
+<h2>Collection Boys</h2>
+<button class="btn btn-primary no-print" onclick="openCollModal()">+ Naya Collection Boy</button>
+<div id="collectorsList" style="margin-top:12px"></div>
+</div>
+
+<!-- TAB: Settings -->
+<div id="tab-settings" class="tab">
+<h2>Settings</h2>
+<div class="card">
+<h3 style="font-size:14px">&#9889; Supabase Database</h3>
+<p style="font-size:12px;color:#666;margin:4px 0 8px">Status: <span id="fbSettingsStatus">-</span></p>
+<button class="btn btn-sm btn-primary" onclick="openSupabaseSetup()">Setup / Change Supabase</button>
+<button class="btn btn-sm btn-danger" onclick="disconnectSupabase()" style="margin-left:6px">Disconnect</button>
+</div>
+<div class="card">
+<h3 style="font-size:14px">Revenue Page Password</h3>
+<label>Naya Password Set Karo</label>
+<input id="setRevPw" type="password" placeholder="Password enter karo">
+<button class="btn btn-primary btn-sm" onclick="saveRevPassword()" style="margin-top:8px">Save Password</button>
+</div>
+<div class="card" style="margin-top:12px">
+<h3 style="font-size:14px">Data Backup & Restore</h3>
+<div class="row" style="margin-top:8px">
+<button class="btn btn-secondary" onclick="exportData()">&#128229; Backup Download</button>
+<button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">&#128228; Restore Upload</button>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+</div>
+</div>
+
+<!-- Password Overlay -->
+<div id="passwordOverlay">
+<div class="pw-box">
+<h3>&#128274; Password Daalo</h3>
+<input type="password" id="revPwInput" placeholder="Revenue password" onkeydown="if(event.key==='Enter')checkRevPw()">
+<button class="btn btn-primary" onclick="checkRevPw()" style="width:100%">Unlock</button>
+<p id="pwError" style="color:red;font-size:12px;margin-top:8px"></p>
+</div>
+</div>
+
+<!-- Supabase Setup Modal -->
+<div id="supabaseSetup">
+<div class="modal" style="max-width:500px">
+<h3>&#9889; Supabase Setup</h3>
+<p style="font-size:12px;color:#555;margin-bottom:10px">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> &rarr; Create Project &rarr; Go to Settings &rarr; API &rarr; Copy the <b>Project URL</b> and <b>anon public</b> key below. Then go to SQL Editor and run the setup SQL (shown below).</p>
+<label>Supabase Project URL</label>
+<input id="sbUrl" placeholder="https://xxxxx.supabase.co">
+<label>Anon Key</label>
+<input id="sbKey" placeholder="eyJhbGciOi...">
+<div style="margin-top:8px;padding:8px;background:#f8f8f8;border-radius:6px;font-size:11px;font-family:monospace;max-height:140px;overflow-y:auto;white-space:pre-wrap" id="sqlSetup"></div>
+<div style="margin-top:6px"><button class="btn btn-sm btn-secondary" onclick="copySql()">Copy SQL</button></div>
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveSupabaseConfig()">Connect</button>
+<button class="btn btn-secondary" onclick="document.getElementById('supabaseSetup').classList.remove('show')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Rate List Modal -->
+<div class="modal-overlay" id="rlModal">
+<div class="modal">
+<h3 id="rlModalTitle">Nayi Rate List</h3>
+<label>Rate List Ka Naam</label>
+<input id="rlNameInput" placeholder="e.g. Rate List 1">
+<label style="margin-top:8px">Ye Rate List Kin Doctors Ko Assign Karo</label>
+<div id="rlDoctorCheckboxes" style="max-height:100px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px;margin-bottom:6px"></div>
+<div style="margin:8px 0">
+<button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
+</div>
+<div id="rlTestRows" style="max-height:280px;overflow-y:auto"></div>
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveRateList()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('rlModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Doctor Modal -->
+<div class="modal-overlay" id="docModal">
+<div class="modal">
+<h3>Naya Doctor / Hospital</h3>
+<label>Naam</label>
+<input id="docNameInput" placeholder="Dr. XYZ / Hospital Name">
+<label>Rate List Assign Karo</label>
+<select id="docRLSelect"><option value="">-- Select Rate List --</option></select>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveDoctor()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('docModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Collector Modal -->
+<div class="modal-overlay" id="collModal">
+<div class="modal">
+<h3>Naya Collection Boy</h3>
+<label>Naam</label>
+<input id="collNameInput" placeholder="Collection boy ka naam">
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveCollector()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('collModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Print Area -->
+<div id="printArea" style="display:none"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- App JS Files -->
+<script src="js/db.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/ratelist.js"></script>
+<script src="js/doctors.js"></script>
+<script src="js/entry.js"></script>
+<script src="js/register.js"></script>
+<script src="js/hisab.js"></script>
+<script src="js/revenue.js"></script>
+<script src="js/backup.js"></script>
+
+<!-- Init -->
+<script>
+function init() {
+  initDatePicker('e');
+  initDatePicker('reg');
+  let d = todayStr();
+  document.getElementById('hFrom').value = d;
+  document.getElementById('hTo').value = d;
+  document.getElementById('revFrom').value = d;
+  document.getElementById('revTo').value = d;
+  populateDropdowns();
+  renderRateLists();
+  renderDoctors();
+  renderCollectors();
+  togglePayFields();
+  refreshSidebar();
+  initDoctorChange();
+  initKeyboardFlow();
+  initSupabase();
+}
+init();
+</script>
+</body>
+</html>

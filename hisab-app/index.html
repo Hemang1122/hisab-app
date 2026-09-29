@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBCL Hisab</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#f5f5f5;color:#333}
+.header{background:#1a5276;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:18px;font-weight:600}
+.header small{opacity:.8;font-size:12px}
+.db-status{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:600}
+.db-online{background:#d4efdf;color:#1e8449}
+.db-offline{background:#fadbd8;color:#c0392b}
+.db-loading{background:#fef9e7;color:#b7950b}
+nav{display:flex;background:#fff;border-bottom:2px solid #1a5276;overflow-x:auto;flex-wrap:nowrap}
+nav button{flex:none;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:#555;white-space:nowrap;border-bottom:3px solid transparent;transition:.2s}
+nav button.active{color:#1a5276;border-bottom-color:#1a5276;background:#e8f0fe}
+.tab{display:none;padding:16px;max-width:1100px;margin:0 auto}
+.tab.active{display:block}
+h2{font-size:16px;margin-bottom:12px;color:#1a5276}
+label{display:block;font-size:13px;font-weight:500;margin:8px 0 4px;color:#444}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:inherit}
+input:focus,select:focus{border-color:#1a5276;outline:none;box-shadow:0 0 0 2px rgba(26,82,118,.15)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+button.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
+.btn-primary{background:#1a5276;color:#fff}
+.btn-primary:hover{background:#154360}
+.btn-danger{background:#c0392b;color:#fff}
+.btn-danger:hover{background:#a93226}
+.btn-secondary{background:#7f8c8d;color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+th,td{padding:6px 8px;border:1px solid #ddd;text-align:left}
+th{background:#1a5276;color:#fff;font-weight:500;font-size:12px}
+tr:nth-child(even){background:#f9f9f9}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-green{background:#d4efdf;color:#1e8449}
+.badge-red{background:#fadbd8;color:#c0392b}
+.card{background:#fff;border-radius:8px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.test-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #eee;flex-wrap:wrap}
+.test-row .tname{flex:1;min-width:100px;font-size:13px}
+.test-row .trate{width:60px;text-align:right;font-weight:600;font-size:13px}
+.tag-normal{color:#1a5276;background:#e8f0fe;padding:1px 6px;border-radius:4px;font-size:11px}
+.tag-special{color:#8e44ad;background:#f4ecf7;padding:1px 6px;border-radius:4px;font-size:11px}
+.total-bar{background:#eaf2f8;padding:10px 14px;border-radius:6px;margin:10px 0;font-size:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.total-bar b{color:#1a5276}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:10px;padding:20px;width:90%;max-width:420px;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:12px;color:#1a5276}
+.empty{text-align:center;padding:30px;color:#999;font-size:14px}
+.del-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px}
+hr{border:none;border-top:1px solid #eee;margin:10px 0}
+.flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.date-picker{display:flex;gap:6px;align-items:end;flex-wrap:wrap}
+.date-picker select{width:auto;min-width:80px}
+#passwordOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center}
+#passwordOverlay.show{display:flex}
+.pw-box{background:#fff;border-radius:10px;padding:24px;width:300px;text-align:center}
+.pw-box h3{margin-bottom:16px}
+.pw-box input{margin-bottom:12px}
+.entry-layout{display:flex;gap:16px;flex-wrap:wrap}
+.entry-form{flex:1;min-width:320px}
+.entry-sidebar{flex:1;min-width:280px;max-width:400px}
+.entry-sidebar table{font-size:12px}
+.entry-sidebar th,.entry-sidebar td{padding:4px 6px}
+.sidebar-title{font-size:14px;font-weight:600;color:#1a5276;margin-bottom:6px}
+.pay-section{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pay-section select{width:auto;min-width:90px}
+.pay-section input{width:100px}
+.pay-section .bal-display{font-weight:700;color:#c0392b;font-size:14px}
+.pay-section .paid-display{font-weight:700;color:#1e8449;font-size:14px}
+#supabaseSetup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:center;justify-content:center}
+#supabaseSetup.show{display:flex}
+#supabaseSetup .modal{max-width:500px}
+@media(max-width:700px){.entry-sidebar{max-width:100%}}
+@media print{
+body{background:#fff!important}
+.header,nav,.no-print{display:none!important}
+.tab{display:none!important}
+#printArea{display:block!important;padding:0;margin:0}
+#printArea *{font-size:12px;color:#000}
+#printArea table{border:1px solid #000}
+#printArea th{background:#eee!important;color:#000!important;-webkit-print-color-adjust:exact}
+#printArea td,#printArea th{border:1px solid #000;padding:4px 6px}
+@page{margin:10mm}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+<div><h1>Shree Balaji Clinical Lab</h1><small>Hisab Management System</small></div>
+<div><span id="dbStatus" class="db-status db-loading">Connecting...</span></div>
+</div>
+
+<nav>
+<button onclick="showTab('entry')" class="active">Naya Entry</button>
+<button onclick="showTab('register')">Register</button>
+<button onclick="showTab('hisab')">Hisab Print</button>
+<button onclick="showTab('revenue')">Revenue</button>
+<button onclick="showTab('ratelist')">Rate List</button>
+<button onclick="showTab('doctors')">Doctors & Staff</button>
+<button onclick="showTab('settings')">Settings</button>
+</nav>
+
+<!-- TAB: Naya Entry -->
+<div id="tab-entry" class="tab active">
+<h2>Naya Entry</h2>
+<div class="entry-layout">
+<div class="entry-form">
+<div class="card">
+<div class="row">
+<div>
+<label>Date</label>
+<div class="date-picker">
+<select id="eMonth" onchange="updateDateDropdown('e');refreshSidebar()"></select>
+<select id="eDay" onchange="refreshSidebar()"></select>
+</div>
+</div>
+<div><label>Doctor / Hospital</label>
+<select id="eDoctor"><option value="">-- Select --</option></select></div>
+</div>
+<div class="row">
+<div><label>Patient Ka Naam</label><input id="eName" placeholder="Patient name"></div>
+<div style="max-width:80px"><label>Age</label><input id="eAge" type="number" placeholder="Age"></div>
+<div style="max-width:80px"><label>Gender</label>
+<select id="eGender"><option>M</option><option>F</option><option>O</option></select></div>
+</div>
+<hr>
+<label>Tests (Rate List: <span id="rlName">-</span>)</label>
+<div id="testCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px"></div>
+<div class="total-bar" id="entryTotals" style="display:none">
+<span>Subtotal: &#8377;<b id="eSubtotal">0</b></span>
+<span>Discount: &#8377;<b id="eDiscAmt">0</b></span>
+<span>Total: &#8377;<b id="eTotal">0</b></span>
+</div>
+<hr>
+<div class="row">
+<div><label>Discount</label>
+<div class="row">
+<input id="eDisc" type="number" value="0" oninput="calcEntry()">
+<select id="eDiscType" onchange="calcEntry()" style="max-width:65px"><option value="rs">&#8377;</option><option value="pc">%</option></select>
+</div></div>
+<div><label>Payment</label>
+<div class="pay-section">
+<select id="ePayStatus" onchange="togglePayFields()">
+<option value="paid">Paid</option>
+<option value="partial">Balance</option>
+</select>
+<input id="ePaid" type="number" value="0" placeholder="Paid &#8377;" oninput="calcEntry()" style="display:none">
+<span id="balDisplay"></span>
+</div></div>
+</div>
+<div class="row">
+<div><label>Payment Mode</label>
+<select id="ePayMode"><option>Cash</option><option>GPay</option><option>PhonePe</option><option>UPI</option><option>Card</option><option>Online</option><option>Other</option></select></div>
+<div><label>Collection Boy</label>
+<select id="eCollector"><option value="">-- None --</option></select></div>
+</div>
+<div style="margin-top:10px;text-align:right">
+<button class="btn btn-primary" onclick="saveEntry()">&#128190; Save Entry</button>
+</div>
+</div>
+</div>
+<!-- RIGHT SIDE: Today's entries -->
+<div class="entry-sidebar">
+<div class="card" style="padding:10px">
+<div class="sidebar-title">&#128203; Aaj Ki Entries (<span id="sidebarDate">-</span>)</div>
+<div id="sidebarEntries"></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- TAB: Register -->
+<div id="tab-register" class="tab">
+<h2>Register</h2>
+<div class="row no-print" style="margin-bottom:10px">
+<div><div class="date-picker">
+<select id="regMonth" onchange="updateDateDropdown('reg');renderRegister()"></select>
+<select id="regDay" onchange="renderRegister()"></select>
+</div></div>
+<div><select id="regDocFilter" onchange="renderRegister()"><option value="">Sabhi Doctors</option></select></div>
+<div><input id="regSearch" placeholder="Search naam..." oninput="renderRegister()"></div>
+</div>
+<div id="registerList"></div>
+</div>
+
+<!-- TAB: Hisab Print -->
+<div id="tab-hisab" class="tab">
+<h2>Hisab Print</h2>
+<div class="card no-print">
+<div class="row">
+<div><label>Date From</label><input type="date" id="hFrom"></div>
+<div><label>Date To</label><input type="date" id="hTo"></div>
+</div>
+<div class="row">
+<div><label>Doctor / Hospital</label>
+<select id="hDoctor"><option value="">-- Select --</option></select></div>
+</div>
+<div style="margin-top:10px">
+<button class="btn btn-primary" onclick="generateHisab()">&#128203; Generate Hisab</button>
+<button class="btn btn-secondary" onclick="printHisab()" style="margin-left:8px">&#128424; Print</button>
+</div>
+</div>
+<div id="hisabResult"></div>
+</div>
+
+<!-- TAB: Revenue -->
+<div id="tab-revenue" class="tab">
+<h2>Revenue Dashboard</h2>
+<div id="revContent" style="display:none">
+<div class="card no-print">
+<div class="row">
+<div><label>Date From</label><input type="date" id="revFrom"></div>
+<div><label>Date To</label><input type="date" id="revTo"></div>
+<div style="align-self:end"><button class="btn btn-primary" onclick="showRevenue()">Show</button></div>
+</div>
+</div>
+<div id="revenueResult"></div>
+</div>
+</div>
+
+<!-- TAB: Rate List -->
+<div id="tab-ratelist" class="tab">
+<h2>Rate Lists</h2>
+<button class="btn btn-primary no-print" onclick="openRLModal()">+ Nayi Rate List</button>
+<div id="rateListsView" style="margin-top:12px"></div>
+</div>
+
+<!-- TAB: Doctors & Staff -->
+<div id="tab-doctors" class="tab">
+<h2>Doctors & Hospitals</h2>
+<button class="btn btn-primary no-print" onclick="openDocModal()">+ Naya Doctor / Hospital</button>
+<div id="doctorsList" style="margin-top:12px"></div>
+<hr>
+<h2>Collection Boys</h2>
+<button class="btn btn-primary no-print" onclick="openCollModal()">+ Naya Collection Boy</button>
+<div id="collectorsList" style="margin-top:12px"></div>
+</div>
+
+<!-- TAB: Settings -->
+<div id="tab-settings" class="tab">
+<h2>Settings</h2>
+<div class="card">
+<h3 style="font-size:14px">&#9889; Supabase Database</h3>
+<p style="font-size:12px;color:#666;margin:4px 0 8px">Status: <span id="fbSettingsStatus">-</span></p>
+<button class="btn btn-sm btn-primary" onclick="openSupabaseSetup()">Setup / Change Supabase</button>
+<button class="btn btn-sm btn-danger" onclick="disconnectSupabase()" style="margin-left:6px">Disconnect</button>
+</div>
+<div class="card">
+<h3 style="font-size:14px">Revenue Page Password</h3>
+<label>Naya Password Set Karo</label>
+<input id="setRevPw" type="password" placeholder="Password enter karo">
+<button class="btn btn-primary btn-sm" onclick="saveRevPassword()" style="margin-top:8px">Save Password</button>
+</div>
+<div class="card" style="margin-top:12px">
+<h3 style="font-size:14px">Data Backup & Restore</h3>
+<div class="row" style="margin-top:8px">
+<button class="btn btn-secondary" onclick="exportData()">&#128229; Backup Download</button>
+<button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">&#128228; Restore Upload</button>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+</div>
+</div>
+
+<!-- Password Overlay -->
+<div id="passwordOverlay">
+<div class="pw-box">
+<h3>&#128274; Password Daalo</h3>
+<input type="password" id="revPwInput" placeholder="Revenue password" onkeydown="if(event.key==='Enter')checkRevPw()">
+<button class="btn btn-primary" onclick="checkRevPw()" style="width:100%">Unlock</button>
+<p id="pwError" style="color:red;font-size:12px;margin-top:8px"></p>
+</div>
+</div>
+
+<!-- Supabase Setup Modal -->
+<div id="supabaseSetup">
+<div class="modal" style="max-width:500px">
+<h3>&#9889; Supabase Setup</h3>
+<p style="font-size:12px;color:#555;margin-bottom:10px">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> &rarr; Create Project &rarr; Go to Settings &rarr; API &rarr; Copy the <b>Project URL</b> and <b>anon public</b> key below. Then go to SQL Editor and run the setup SQL (shown below).</p>
+<label>Supabase Project URL</label>
+<input id="sbUrl" placeholder="https://xxxxx.supabase.co">
+<label>Anon Key</label>
+<input id="sbKey" placeholder="eyJhbGciOi...">
+<div style="margin-top:8px;padding:8px;background:#f8f8f8;border-radius:6px;font-size:11px;font-family:monospace;max-height:140px;overflow-y:auto;white-space:pre-wrap" id="sqlSetup"></div>
+<div style="margin-top:6px"><button class="btn btn-sm btn-secondary" onclick="copySql()">Copy SQL</button></div>
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveSupabaseConfig()">Connect</button>
+<button class="btn btn-secondary" onclick="document.getElementById('supabaseSetup').classList.remove('show')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Rate List Modal -->
+<div class="modal-overlay" id="rlModal">
+<div class="modal">
+<h3 id="rlModalTitle">Nayi Rate List</h3>
+<label>Rate List Ka Naam</label>
+<input id="rlNameInput" placeholder="e.g. Rate List 1">
+<label style="margin-top:8px">Ye Rate List Kin Doctors Ko Assign Karo</label>
+<div id="rlDoctorCheckboxes" style="max-height:100px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px;margin-bottom:6px"></div>
+<div style="margin:8px 0">
+<button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
+</div>
+<div id="rlTestRows" style="max-height:280px;overflow-y:auto"></div>
+<div style="margin-top:10px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveRateList()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('rlModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Doctor Modal -->
+<div class="modal-overlay" id="docModal">
+<div class="modal">
+<h3>Naya Doctor / Hospital</h3>
+<label>Naam</label>
+<input id="docNameInput" placeholder="Dr. XYZ / Hospital Name">
+<label>Rate List Assign Karo</label>
+<select id="docRLSelect"><option value="">-- Select Rate List --</option></select>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveDoctor()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('docModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Collector Modal -->
+<div class="modal-overlay" id="collModal">
+<div class="modal">
+<h3>Naya Collection Boy</h3>
+<label>Naam</label>
+<input id="collNameInput" placeholder="Collection boy ka naam">
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="saveCollector()">Save</button>
+<button class="btn btn-secondary" onclick="closeModal('collModal')">Cancel</button>
+</div>
+</div>
+</div>
+
+<!-- Print Area -->
+<div id="printArea" style="display:none"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script>
+// ========== SETUP SQL for Supabase ==========
+const SETUP_SQL=`-- Run this in Supabase SQL Editor (one time setup)
+create table if not exists rate_lists (
+  id text primary key,
+  data jsonb not null
+);
+create table if not exists doctors (
+  id text primary key,
+  data jsonb not null
+);
+create table if not exists collectors (
+  id text primary key,
+  data jsonb not null
+);
+create table if not exists entries (
+  id text primary key,
+  data jsonb not null
+);
+create table if not exists config (
+  id text primary key,
+  data jsonb not null
+);
+
+-- Allow public access (for anon key)
+alter table rate_lists enable row level security;
+alter table doctors enable row level security;
+alter table collectors enable row level security;
+alter table entries enable row level security;
+alter table config enable row level security;
+
+create policy "Allow all" on rate_lists for all using (true) with check (true);
+create policy "Allow all" on doctors for all using (true) with check (true);
+create policy "Allow all" on collectors for all using (true) with check (true);
+create policy "Allow all" on entries for all using (true) with check (true);
+create policy "Allow all" on config for all using (true) with check (true);`;
+
+// ========== LOCAL STORAGE (cache + fallback) ==========
+const LS={
+  get(k,d=null){try{let v=localStorage.getItem('hv2_'+k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('hv2_'+k,JSON.stringify(v));}catch(e){}}
+};
+
+let rateLists=LS.get('rateLists',[]);
+let doctors=LS.get('doctors',[]);
+let collectors=LS.get('collectors',[]);
+let entries=LS.get('entries',[]);
+let settings=LS.get('settings',{revPassword:'ANITA@1234'});
+
+function saveLocal(){
+  LS.set('rateLists',rateLists);LS.set('doctors',doctors);
+  LS.set('collectors',collectors);LS.set('entries',entries);LS.set('settings',settings);
+}
+
+// ========== SUPABASE DATABASE ==========
+let sb=null; // supabase client
+let dbReady=false;
+const SB_CONFIG_KEY='hv2_sbConfig';
+
+function setDbStatus(text,cls){
+  let el=document.getElementById('dbStatus');
+  el.textContent=text;el.className='db-status '+cls;
+  let s=document.getElementById('fbSettingsStatus');
+  if(s) s.textContent=text;
+}
+
+function initSupabase(){
+  let configStr=localStorage.getItem(SB_CONFIG_KEY);
+  if(!configStr){
+    setDbStatus('No DB - Local Only','db-offline');
+    return;
+  }
+  try{
+    let config=JSON.parse(configStr);
+    if(!config.url||!config.key) throw new Error('Missing url or key');
+    sb=supabase.createClient(config.url,config.key);
+    dbReady=true;
+    setDbStatus('Online ✓','db-online');
+    loadAllFromSupabase();
+  }catch(e){
+    console.error('Supabase init error:',e);
+    setDbStatus('Error - Local Only','db-offline');
+  }
+}
+
+async function loadAllFromSupabase(){
+  if(!dbReady||!sb) return;
+  try{
+    setDbStatus('Syncing...','db-loading');
+
+    let {data:rlData}=await sb.from('rate_lists').select('*');
+    if(rlData&&rlData.length){rateLists=rlData.map(r=>({id:r.id,...r.data}));}
+
+    let {data:docData}=await sb.from('doctors').select('*');
+    if(docData&&docData.length){doctors=docData.map(d=>({id:d.id,...d.data}));}
+
+    let {data:collData}=await sb.from('collectors').select('*');
+    if(collData&&collData.length){collectors=collData.map(c=>({id:c.id,...c.data}));}
+
+    let {data:entData}=await sb.from('entries').select('*');
+    if(entData&&entData.length){entries=entData.map(e=>({id:e.id,...e.data}));}
+
+    let {data:cfgData}=await sb.from('config').select('*').eq('id','settings').single();
+    if(cfgData&&cfgData.data) settings={...settings,...cfgData.data};
+
+    saveLocal();
+    setDbStatus('Online ✓','db-online');
+    populateDropdowns();renderRateLists();renderDoctors();renderCollectors();refreshSidebar();
+  }catch(e){
+    console.error('Supabase load error:',e);
+    setDbStatus('Offline - Using Cache','db-offline');
+  }
+}
+
+// Save a single row to Supabase
+async function sbSave(table,id,data){
+  if(!dbReady||!sb) return;
+  try{
+    let clean={...data};delete clean.id;
+    await sb.from(table).upsert({id,data:clean},{onConflict:'id'});
+  }catch(e){console.error('SB save error:',table,id,e);}
+}
+async function sbDelete(table,id){
+  if(!dbReady||!sb) return;
+  try{await sb.from(table).delete().eq('id',id);}catch(e){console.error('SB delete error:',e);}
+}
+async function sbSaveSettings(){
+  if(!dbReady||!sb) return;
+  try{await sb.from('config').upsert({id:'settings',data:settings},{onConflict:'id'});}catch(e){}
+}
+
+// Combined save: local + supabase
+function saveAll(){
+  saveLocal();
+  if(dbReady){
+    rateLists.forEach(r=>sbSave('rate_lists',r.id,r));
+    doctors.forEach(d=>sbSave('doctors',d.id,d));
+    collectors.forEach(c=>sbSave('collectors',c.id,c));
+    sbSaveSettings();
+  }
+}
+function saveEntry_db(entry){
+  saveLocal();
+  if(dbReady) sbSave('entries',entry.id,entry);
+}
+
+// Supabase setup UI
+function openSupabaseSetup(){
+  let existing=localStorage.getItem(SB_CONFIG_KEY);
+  if(existing){
+    try{let c=JSON.parse(existing);document.getElementById('sbUrl').value=c.url||'';document.getElementById('sbKey').value=c.key||'';}catch(e){}
+  }
+  document.getElementById('sqlSetup').textContent=SETUP_SQL;
+  document.getElementById('supabaseSetup').classList.add('show');
+}
+function copySql(){
+  navigator.clipboard.writeText(SETUP_SQL).then(()=>alert('SQL copied! Paste it in Supabase SQL Editor and run.')).catch(()=>{});
+}
+function saveSupabaseConfig(){
+  let url=document.getElementById('sbUrl').value.trim();
+  let key=document.getElementById('sbKey').value.trim();
+  if(!url||!key) return alert('URL aur Key dono daalo!');
+  if(!url.startsWith('http')) return alert('URL "https://" se start hona chahiye!');
+  // Remove trailing slash
+  url=url.replace(/\/+$/,'');
+  localStorage.setItem(SB_CONFIG_KEY,JSON.stringify({url,key}));
+  document.getElementById('supabaseSetup').classList.remove('show');
+  // Re-init
+  sb=null;dbReady=false;
+  initSupabase();
+  alert('Supabase connected! Data will now sync to cloud.');
+}
+function disconnectSupabase(){
+  if(!confirm('Disconnect Supabase? Local data will remain.')) return;
+  localStorage.removeItem(SB_CONFIG_KEY);
+  sb=null;dbReady=false;
+  setDbStatus('No DB - Local Only','db-offline');
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+// ========== DATE PICKER ==========
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function initDatePicker(prefix){
+  let now=new Date(),mSel=document.getElementById(prefix+'Month');
+  let curMonth=now.getMonth(),curYear=now.getFullYear();
+  mSel.innerHTML='';
+  for(let offset=-3;offset<=1;offset++){
+    let d=new Date(curYear,curMonth+offset,1);
+    let val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    let opt=document.createElement('option');
+    opt.value=val;opt.textContent=MONTHS[d.getMonth()]+' '+d.getFullYear();
+    if(offset===0) opt.selected=true;
+    mSel.appendChild(opt);
+  }
+  updateDateDropdown(prefix);
+}
+function updateDateDropdown(prefix){
+  let mSel=document.getElementById(prefix+'Month'),dSel=document.getElementById(prefix+'Day');
+  let parts=mSel.value.split('-'),year=parseInt(parts[0]),month=parseInt(parts[1]);
+  let daysInMonth=new Date(year,month,0).getDate();
+  let now=new Date(),td=now.getDate(),tm=now.getMonth()+1,ty=now.getFullYear();
+  dSel.innerHTML='';
+  for(let d=1;d<=daysInMonth;d++){
+    let opt=document.createElement('option');
+    opt.value=d;opt.textContent=d;
+    if(year===ty&&month===tm&&d===td) opt.selected=true;
+    dSel.appendChild(opt);
+  }
+}
+function getDateFromPicker(prefix){
+  let parts=document.getElementById(prefix+'Month').value.split('-');
+  return parts[0]+'-'+parts[1]+'-'+String(document.getElementById(prefix+'Day').value).padStart(2,'0');
+}
+
+// ========== TABS ==========
+let revUnlocked=false;
+const TAB_KEYS=['entry','register','hisab','revenue','ratelist','doctors','settings'];
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  let btns=document.querySelectorAll('nav button');
+  btns.forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  let idx=TAB_KEYS.indexOf(t);if(idx>=0) btns[idx].classList.add('active');
+  if(t==='revenue'&&!revUnlocked&&settings.revPassword){
+    document.getElementById('revContent').style.display='none';
+    document.getElementById('passwordOverlay').classList.add('show');
+    setTimeout(()=>document.getElementById('revPwInput').focus(),100);
+  } else if(t==='revenue') document.getElementById('revContent').style.display='block';
+  if(t==='register') renderRegister();
+  if(t==='ratelist') renderRateLists();
+  if(t==='doctors') renderDoctors();
+  if(t==='entry') refreshSidebar();
+}
+
+// ========== PASSWORD ==========
+function checkRevPw(){
+  if(document.getElementById('revPwInput').value===settings.revPassword){
+    revUnlocked=true;document.getElementById('passwordOverlay').classList.remove('show');
+    document.getElementById('revContent').style.display='block';
+    document.getElementById('revPwInput').value='';document.getElementById('pwError').textContent='';
+  } else document.getElementById('pwError').textContent='Galat password!';
+}
+function saveRevPassword(){
+  settings.revPassword=document.getElementById('setRevPw').value;saveAll();
+  document.getElementById('setRevPw').value='';alert('Password saved!');
+}
+
+// ========== MODALS ==========
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+// ========== PAYMENT TOGGLE ==========
+function togglePayFields(){
+  let status=document.getElementById('ePayStatus').value;
+  let paidInput=document.getElementById('ePaid');
+  if(status==='paid'){paidInput.style.display='none';calcEntry();}
+  else{paidInput.style.display='block';paidInput.focus();calcEntry();}
+}
+function getPaymentInfo(){
+  let status=document.getElementById('ePayStatus').value;
+  let total=parseInt(document.getElementById('eTotal').textContent)||0;
+  if(status==='paid') return {paid:total,balance:0};
+  let paid=parseFloat(document.getElementById('ePaid').value)||0;
+  return {paid,balance:Math.max(0,total-paid)};
+}
+
+// ========== RATE LIST ==========
+let editingRL=null;
+function openRLModal(id){
+  editingRL=id||null;
+  document.getElementById('rlModalTitle').textContent=id?'Rate List Edit':'Nayi Rate List';
+  document.getElementById('rlTestRows').innerHTML='';
+  let dcContainer=document.getElementById('rlDoctorCheckboxes');
+  if(doctors.length){
+    let assignedDocIds=id?doctors.filter(d=>d.rateListId===id).map(d=>d.id):[];
+    dcContainer.innerHTML=doctors.map(d=>'<label style="display:flex;align-items:center;gap:6px;margin:2px 0;font-size:13px"><input type="checkbox" class="rl-doc-cb" value="'+d.id+'" '+(assignedDocIds.includes(d.id)?'checked':'')+'> '+d.name+'</label>').join('');
+  } else dcContainer.innerHTML='<small style="color:#999">Pehle Doctors tab mein doctor add karo</small>';
+  if(id){
+    let rl=rateLists.find(r=>r.id===id);
+    document.getElementById('rlNameInput').value=rl.name;
+    rl.tests.forEach(t=>addRLTest(t));
+  } else document.getElementById('rlNameInput').value='';
+  document.getElementById('rlModal').classList.add('show');
+}
+function addRLTest(data){
+  let div=document.createElement('div');
+  div.style.cssText='border:1px solid #eee;border-radius:6px;padding:8px;margin-bottom:6px;position:relative';
+  let n=data?data.name:'',r=data?data.rate:'',ls=data?data.labShare:'',ds=data?data.docShare:'',tp=data?data.type:'normal';
+  div.innerHTML='<button class="del-btn" onclick="this.parentElement.remove()" style="position:absolute;right:4px;top:4px">✕</button>'+
+    '<input placeholder="Test name" value="'+n+'" class="rlt-name" style="margin-bottom:4px">'+
+    '<div style="display:flex;gap:6px">'+
+    '<input type="number" placeholder="Rate ₹" value="'+r+'" class="rlt-rate" style="width:25%" oninput="autoSplit(this)">'+
+    '<input type="number" placeholder="Lab ₹" value="'+ls+'" class="rlt-lab" style="width:25%">'+
+    '<input type="number" placeholder="Doctor ₹" value="'+ds+'" class="rlt-doc" style="width:25%">'+
+    '<select class="rlt-type" style="width:25%"><option value="normal" '+(tp==='normal'?'selected':'')+'>Normal</option><option value="special" '+(tp==='special'?'selected':'')+'>Special</option></select>'+
+    '</div>';
+  document.getElementById('rlTestRows').appendChild(div);
+}
+function autoSplit(el){
+  let row=el.closest('div'),rate=parseFloat(el.value)||0,half=Math.round(rate/2);
+  row.querySelector('.rlt-lab').value=half;row.querySelector('.rlt-doc').value=rate-half;
+}
+function saveRateList(){
+  let name=document.getElementById('rlNameInput').value.trim();
+  if(!name) return alert('Rate list ka naam daalo!');
+  let tests=[];
+  document.querySelectorAll('#rlTestRows>div').forEach(div=>{
+    let n=div.querySelector('.rlt-name').value.trim();
+    let r=parseFloat(div.querySelector('.rlt-rate').value)||0;
+    let l=parseFloat(div.querySelector('.rlt-lab').value)||0;
+    let d=parseFloat(div.querySelector('.rlt-doc').value)||0;
+    let t=div.querySelector('.rlt-type').value;
+    if(n) tests.push({name:n,rate:r,labShare:l,docShare:d,type:t});
+  });
+  if(!tests.length) return alert('Kam se kam ek test add karo!');
+  let rlId;
+  if(editingRL){let rl=rateLists.find(r=>r.id===editingRL);rl.name=name;rl.tests=tests;rlId=editingRL;}
+  else{rlId=uid();rateLists.push({id:rlId,name,tests});}
+  let checkedDocIds=[];
+  document.querySelectorAll('.rl-doc-cb:checked').forEach(cb=>checkedDocIds.push(cb.value));
+  doctors.forEach(d=>{
+    if(checkedDocIds.includes(d.id)) d.rateListId=rlId;
+    else if(d.rateListId===rlId) d.rateListId='';
+  });
+  saveAll();
+  if(dbReady) sbSave('rate_lists',rlId,rateLists.find(r=>r.id===rlId));
+  closeModal('rlModal');renderRateLists();renderDoctors();populateDropdowns();
+}
+function renderRateLists(){
+  let c=document.getElementById('rateListsView');
+  if(!rateLists.length){c.innerHTML='<div class="empty">Koi rate list nahi hai. Nayi banao!</div>';return;}
+  c.innerHTML=rateLists.map(rl=>{
+    let assignedDocs=doctors.filter(d=>d.rateListId===rl.id).map(d=>d.name);
+    let docStr=assignedDocs.length?assignedDocs.join(', '):'<i style="color:#999">Koi doctor assign nahi</i>';
+    let rows=rl.tests.map(t=>'<tr><td>'+t.name+'</td><td><span class="'+(t.type==='special'?'tag-special':'tag-normal')+'">'+(t.type==='normal'?'Normal':'Special')+'</span></td><td>₹'+t.rate+'</td><td>₹'+t.labShare+'</td><td>₹'+t.docShare+'</td></tr>').join('');
+    return '<div class="card"><div class="flex-between"><div><b>'+rl.name+'</b><br><small>Doctors: '+docStr+'</small></div><div>'+
+      '<button class="btn btn-sm btn-primary" onclick="openRLModal(\''+rl.id+'\')">Edit</button> '+
+      '<button class="btn btn-sm btn-danger" onclick="deleteRL(\''+rl.id+'\')">Delete</button></div></div>'+
+    '<table style="margin-top:8px"><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th></tr>'+rows+'</table></div>';
+  }).join('');
+}
+function deleteRL(id){
+  if(!confirm('Rate list delete karni hai?')) return;
+  doctors.forEach(d=>{if(d.rateListId===id) d.rateListId='';});
+  rateLists=rateLists.filter(r=>r.id!==id);
+  saveAll();sbDelete('rate_lists',id);
+  renderRateLists();renderDoctors();populateDropdowns();
+}
+
+// ========== DOCTORS ==========
+let editingDoc=null;
+function openDocModal(id){
+  editingDoc=id||null;
+  let sel=document.getElementById('docRLSelect');
+  sel.innerHTML='<option value="">-- Select Rate List --</option>'+rateLists.map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
+  if(id){let d=doctors.find(x=>x.id===id);document.getElementById('docNameInput').value=d.name;sel.value=d.rateListId||'';}
+  else{document.getElementById('docNameInput').value='';sel.value='';}
+  document.getElementById('docModal').classList.add('show');
+}
+function saveDoctor(){
+  let name=document.getElementById('docNameInput').value.trim();
+  if(!name) return alert('Doctor ka naam daalo!');
+  let rlId=document.getElementById('docRLSelect').value;
+  if(editingDoc){let d=doctors.find(x=>x.id===editingDoc);d.name=name;d.rateListId=rlId;}
+  else doctors.push({id:uid(),name,rateListId:rlId});
+  saveAll();closeModal('docModal');renderDoctors();populateDropdowns();
+}
+function renderDoctors(){
+  let c=document.getElementById('doctorsList');
+  if(!doctors.length){c.innerHTML='<div class="empty">Koi doctor add nahi hua.</div>';return;}
+  c.innerHTML=doctors.map(d=>{
+    let rl=rateLists.find(r=>r.id===d.rateListId);
+    return '<div class="card flex-between"><div><b>'+d.name+'</b><br><small style="color:#777">Rate List: '+(rl?rl.name:'Not assigned')+'</small></div><div>'+
+      '<button class="btn btn-sm btn-primary" onclick="openDocModal(\''+d.id+'\')">Edit</button> '+
+      '<button class="btn btn-sm btn-danger" onclick="deleteDoc(\''+d.id+'\')">Delete</button></div></div>';
+  }).join('');
+}
+function deleteDoc(id){if(!confirm('Delete?')) return;doctors=doctors.filter(d=>d.id!==id);saveAll();sbDelete('doctors',id);renderDoctors();populateDropdowns();}
+
+// ========== COLLECTORS ==========
+function openCollModal(){document.getElementById('collNameInput').value='';document.getElementById('collModal').classList.add('show');}
+function saveCollector(){
+  let name=document.getElementById('collNameInput').value.trim();
+  if(!name) return alert('Naam daalo!');
+  collectors.push({id:uid(),name});saveAll();closeModal('collModal');renderCollectors();populateDropdowns();
+}
+function renderCollectors(){
+  let c=document.getElementById('collectorsList');
+  if(!collectors.length){c.innerHTML='<div class="empty">Koi collection boy nahi hai.</div>';return;}
+  c.innerHTML=collectors.map(cl=>'<div class="card flex-between"><b>'+cl.name+'</b>'+
+    '<button class="btn btn-sm btn-danger" onclick="deleteColl(\''+cl.id+'\')">Delete</button></div>').join('');
+}
+function deleteColl(id){if(!confirm('Delete?')) return;collectors=collectors.filter(c=>c.id!==id);saveAll();sbDelete('collectors',id);renderCollectors();populateDropdowns();}
+
+// ========== DROPDOWNS ==========
+function populateDropdowns(){
+  let docOpts='<option value="">-- Select --</option>'+doctors.map(d=>'<option value="'+d.id+'">'+d.name+'</option>').join('');
+  document.getElementById('eDoctor').innerHTML=docOpts;
+  document.getElementById('hDoctor').innerHTML=docOpts;
+  document.getElementById('regDocFilter').innerHTML='<option value="">Sabhi Doctors</option>'+doctors.map(d=>'<option value="'+d.id+'">'+d.name+'</option>').join('');
+  document.getElementById('eCollector').innerHTML='<option value="">-- None --</option>'+collectors.map(c=>'<option value="'+c.id+'">'+c.name+'</option>').join('');
+}
+
+// ========== ENTRY FORM ==========
+document.getElementById('eDoctor').addEventListener('change',function(){
+  let doc=doctors.find(d=>d.id===this.value);
+  let container=document.getElementById('testCheckboxes'),rlSpan=document.getElementById('rlName');
+  if(!doc||!doc.rateListId){container.innerHTML='<div class="empty" style="padding:10px">Pehle doctor select karo jisko rate list assigned ho</div>';rlSpan.textContent='-';return;}
+  let rl=rateLists.find(r=>r.id===doc.rateListId);
+  if(!rl){container.innerHTML='<div class="empty" style="padding:10px">Rate list nahi mili</div>';rlSpan.textContent='-';return;}
+  rlSpan.textContent=rl.name;
+  container.innerHTML=rl.tests.map((t,i)=>'<div class="test-row">'+
+    '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">'+
+    '<input type="checkbox" class="test-cb" data-idx="'+i+'" onchange="calcEntry()"> '+
+    '<span class="tname">'+t.name+'</span></label>'+
+    '<span class="'+(t.type==='special'?'tag-special':'tag-normal')+'">'+(t.type==='normal'?'Normal':'Special')+'</span>'+
+    '<span class="trate">₹'+t.rate+'</span></div>').join('');
+  calcEntry();
+});
+
+function getSelectedTests(){
+  let doc=doctors.find(d=>d.id===document.getElementById('eDoctor').value);
+  if(!doc||!doc.rateListId) return [];
+  let rl=rateLists.find(r=>r.id===doc.rateListId);if(!rl) return [];
+  let selected=[];
+  document.querySelectorAll('.test-cb:checked').forEach(cb=>{
+    let idx=parseInt(cb.dataset.idx);if(rl.tests[idx]) selected.push({...rl.tests[idx]});
+  });
+  return selected;
+}
+
+function calcEntry(){
+  let tests=getSelectedTests();
+  let subtotal=tests.reduce((s,t)=>s+t.rate,0);
+  let disc=parseFloat(document.getElementById('eDisc').value)||0;
+  let discType=document.getElementById('eDiscType').value;
+  let discAmt=discType==='pc'?Math.round(subtotal*disc/100):disc;
+  let total=Math.max(0,subtotal-discAmt);
+  document.getElementById('eSubtotal').textContent=subtotal;
+  document.getElementById('eDiscAmt').textContent=discAmt;
+  document.getElementById('eTotal').textContent=total;
+  document.getElementById('entryTotals').style.display=tests.length?'flex':'none';
+  let bd=document.getElementById('balDisplay');
+  if(document.getElementById('ePayStatus').value==='paid'){
+    bd.innerHTML='<span class="paid-display">Full Paid ₹'+total+'</span>';
+  } else {
+    let bal=Math.max(0,total-(parseFloat(document.getElementById('ePaid').value)||0));
+    bd.innerHTML='<span class="bal-display">Balance: ₹'+bal+'</span>';
+  }
+}
+
+function saveEntry(){
+  let docId=document.getElementById('eDoctor').value;
+  let doc=doctors.find(d=>d.id===docId);
+  if(!doc) return alert('Doctor select karo!');
+  let name=document.getElementById('eName').value.trim();
+  if(!name) return alert('Patient ka naam daalo!');
+  let tests=getSelectedTests();
+  if(!tests.length) return alert('Kam se kam ek test select karo!');
+  let subtotal=tests.reduce((s,t)=>s+t.rate,0);
+  let disc=parseFloat(document.getElementById('eDisc').value)||0;
+  let discType=document.getElementById('eDiscType').value;
+  let discAmt=discType==='pc'?Math.round(subtotal*disc/100):disc;
+  let total=Math.max(0,subtotal-discAmt);
+  let payInfo=getPaymentInfo();
+  let entry={
+    id:uid(),
+    date:getDateFromPicker('e'),
+    doctorId:docId,doctorName:doc.name,name,
+    age:document.getElementById('eAge').value,
+    gender:document.getElementById('eGender').value,
+    tests,subtotal,discount:discAmt,total,
+    paid:payInfo.paid,balance:payInfo.balance,
+    paymentMode:document.getElementById('ePayMode').value,
+    collectorId:document.getElementById('eCollector').value,
+    collectorName:(collectors.find(c=>c.id===document.getElementById('eCollector').value)||{}).name||'',
+    created:new Date().toISOString()
+  };
+  entries.push(entry);
+  saveEntry_db(entry);
+  document.getElementById('eName').value='';
+  document.getElementById('eAge').value='';
+  document.getElementById('eDisc').value='0';
+  document.getElementById('ePaid').value='0';
+  document.getElementById('ePayStatus').value='paid';
+  togglePayFields();
+  document.querySelectorAll('.test-cb').forEach(cb=>cb.checked=false);
+  calcEntry();
+  refreshSidebar();
+  document.getElementById('eName').focus();
+}
+
+// ========== ENTRY SIDEBAR ==========
+function refreshSidebar(){
+  let date=getDateFromPicker('e');
+  document.getElementById('sidebarDate').textContent=date;
+  let dayEntries=entries.filter(e=>e.date===date);
+  let c=document.getElementById('sidebarEntries');
+  if(!dayEntries.length){c.innerHTML='<div class="empty" style="padding:15px">Koi entry nahi</div>';return;}
+  let totalAmt=0,totalPaid=0;
+  let rows=dayEntries.map((e,i)=>{
+    totalAmt+=e.total;totalPaid+=e.paid;
+    let tnames=e.tests.map(t=>t.name).join(', ');
+    let st=e.balance>0?'<span class="badge badge-red">₹'+e.balance+'</span>':'<span class="badge badge-green">Paid</span>';
+    return '<tr><td>'+(i+1)+'</td><td>'+e.name+'</td><td>'+e.doctorName+'</td><td style="font-size:11px;max-width:100px">'+tnames+'</td><td>₹'+e.total+'</td><td>'+st+'</td>'+
+      '<td><button class="del-btn" onclick="deleteEntry(\''+e.id+'\')">✕</button></td></tr>';
+  }).join('');
+  c.innerHTML='<table><tr><th>#</th><th>Naam</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Status</th><th></th></tr>'+rows+'</table>'+
+    '<div style="font-size:12px;margin-top:6px;color:#555"><b>'+dayEntries.length+'</b> entries | Total: <b>₹'+totalAmt+'</b> | Paid: <b>₹'+totalPaid+'</b> | Baaki: <b style="color:#c0392b">₹'+(totalAmt-totalPaid)+'</b></div>';
+}
+
+// ========== REGISTER ==========
+function renderRegister(){
+  let date=getDateFromPicker('reg');
+  let docFilter=document.getElementById('regDocFilter').value;
+  let search=(document.getElementById('regSearch').value||'').toLowerCase();
+  let filtered=entries.filter(e=>{
+    if(e.date!==date) return false;
+    if(docFilter&&e.doctorId!==docFilter) return false;
+    if(search&&!e.name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  let c=document.getElementById('registerList');
+  if(!filtered.length){c.innerHTML='<div class="empty">Koi entry nahi mili.</div>';return;}
+  let totalAmt=0,totalPaid=0;
+  let rows=filtered.map((e,i)=>{
+    totalAmt+=e.total;totalPaid+=e.paid;
+    let tnames=e.tests.map(t=>t.name).join(', ');
+    let status=e.balance>0?'<span class="badge badge-red">₹'+e.balance+' Baaki</span>':'<span class="badge badge-green">Paid</span>';
+    return '<tr><td>'+(i+1)+'</td><td>'+e.name+'</td><td>'+(e.age||'-')+'/'+e.gender+'</td>'+
+      '<td>'+e.doctorName+'</td><td style="font-size:11px">'+tnames+'</td>'+
+      '<td>₹'+e.total+'</td><td>₹'+e.paid+'</td><td>'+status+'</td>'+
+      '<td>'+e.paymentMode+'</td><td>'+(e.collectorName||'-')+'</td>'+
+      '<td><button class="del-btn" onclick="deleteEntry(\''+e.id+'\')">🗑️</button></td></tr>';
+  }).join('');
+  c.innerHTML='<table><tr><th>#</th><th>Naam</th><th>Age/G</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Paid</th><th>Status</th><th>Mode</th><th>Collection</th><th></th></tr>'+rows+'</table>'+
+  '<div class="total-bar"><span>Entries: <b>'+filtered.length+'</b></span><span>Total: <b>₹'+totalAmt+'</b></span><span>Paid: <b>₹'+totalPaid+'</b></span><span>Baaki: <b>₹'+(totalAmt-totalPaid)+'</b></span></div>';
+}
+function deleteEntry(id){
+  if(!confirm('Entry delete karni hai?')) return;
+  entries=entries.filter(e=>e.id!==id);saveLocal();sbDelete('entries',id);
+  renderRegister();refreshSidebar();
+}
+
+// ========== HISAB PRINT (PER-PATIENT, ENGLISH, FOR DOCTOR) ==========
+function generateHisab(){
+  let from=document.getElementById('hFrom').value,to=document.getElementById('hTo').value;
+  let docId=document.getElementById('hDoctor').value;
+  if(!docId) return alert('Doctor select karo!');
+  if(!from||!to) return alert('Date range daalo!');
+  let doc=doctors.find(d=>d.id===docId);
+  let filtered=entries.filter(e=>e.doctorId===docId&&e.date>=from&&e.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!filtered.length){document.getElementById('hisabResult').innerHTML='<div class="empty">No entries found in this date range.</div>';return;}
+
+  let grandTotal=0,grandDoc=0,grandLab=0,grandPaid=0,grandBal=0;
+  let rows=filtered.map((e,i)=>{
+    let docS=0,labS=0;
+    e.tests.forEach(t=>{docS+=t.docShare;labS+=t.labShare;});
+    grandTotal+=e.total;grandDoc+=docS;grandLab+=labS;grandPaid+=e.paid;grandBal+=e.balance;
+    let tnames=e.tests.map(t=>t.name).join(', ');
+    let payBal=e.balance>0?'Paid ₹'+e.paid+' / Bal ₹'+e.balance:'Paid ₹'+e.total;
+    return '<tr><td>'+e.date+'</td><td>'+e.name+'</td><td style="font-size:11px">'+tnames+'</td><td>₹'+e.total+'</td><td>₹'+docS+'</td><td>₹'+labS+'</td><td>'+payBal+'</td><td>'+e.paymentMode+'</td></tr>';
+  }).join('');
+
+  document.getElementById('hisabResult').innerHTML='<div class="card" id="hisabPrintContent">'+
+    '<div style="text-align:center;margin-bottom:10px">'+
+    '<h2 style="margin:0">Shree Balaji Clinical Lab</h2>'+
+    '<p style="font-size:13px;color:#555">Account Statement</p></div>'+
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">'+
+    '<span><b>Doctor:</b> '+doc.name+'</span>'+
+    '<span><b>Period:</b> '+from+' to '+to+'</span></div>'+
+    '<table><tr><th>Date</th><th>Patient</th><th>Tests</th><th>Total</th><th>Doctor</th><th>Lab</th><th>Paid / Balance</th><th>Mode</th></tr>'+rows+'</table>'+
+    '<div style="margin-top:14px;padding:10px;background:#f0f0f0;border-radius:6px;font-size:14px">'+
+    '<div class="flex-between" style="margin-bottom:6px"><span>Total Patients:</span><b>'+filtered.length+'</b></div>'+
+    '<div class="flex-between" style="margin-bottom:6px"><span>Total Amount:</span><b style="color:#1a5276;font-size:16px">₹'+grandTotal+'</b></div>'+
+    '<div class="flex-between" style="margin-bottom:6px"><span>Doctor Share:</span><b style="color:#27ae60;font-size:16px">₹'+grandDoc+'</b></div>'+
+    '<div class="flex-between" style="margin-bottom:6px"><span>Lab Share:</span><b style="color:#2980b9;font-size:16px">₹'+grandLab+'</b></div>'+
+    '<hr>'+
+    '<div class="flex-between" style="margin-bottom:4px"><span>Total Paid:</span><b>₹'+grandPaid+'</b></div>'+
+    '<div class="flex-between"><span>Total Balance:</span><b style="color:#c0392b">₹'+grandBal+'</b></div>'+
+    '</div></div>';
+}
+
+function printHisab(){
+  let content=document.getElementById('hisabPrintContent');
+  if(!content) return alert('Pehle Hisab banao!');
+  document.getElementById('printArea').innerHTML=content.innerHTML;
+  document.getElementById('printArea').style.display='block';
+  setTimeout(()=>{window.print();document.getElementById('printArea').style.display='none';},200);
+}
+
+// ========== REVENUE ==========
+function showRevenue(){
+  let from=document.getElementById('revFrom').value,to=document.getElementById('revTo').value;
+  if(!from||!to) return alert('Date range select karo!');
+  let filtered=entries.filter(e=>e.date>=from&&e.date<=to);
+  let totalRevenue=0,totalLabShare=0,totalDocShare=0,totalDisc=0,totalPaid=0,totalBal=0;
+  let byDoctor={},byPayMode={};
+  filtered.forEach(e=>{
+    let labS=0,docS=0;
+    e.tests.forEach(t=>{labS+=t.labShare;docS+=t.docShare;});
+    totalRevenue+=e.total;totalLabShare+=labS;totalDocShare+=docS;
+    totalDisc+=e.discount;totalPaid+=e.paid;totalBal+=e.balance;
+    if(!byDoctor[e.doctorName]) byDoctor[e.doctorName]={revenue:0,lab:0,doc:0,count:0};
+    byDoctor[e.doctorName].revenue+=e.total;byDoctor[e.doctorName].lab+=labS;
+    byDoctor[e.doctorName].doc+=docS;byDoctor[e.doctorName].count++;
+    byPayMode[e.paymentMode]=(byPayMode[e.paymentMode]||0)+e.paid;
+  });
+  let docRows=Object.entries(byDoctor).map(([n,d])=>'<tr><td>'+n+'</td><td>'+d.count+'</td><td>₹'+d.revenue+'</td><td>₹'+d.lab+'</td><td>₹'+d.doc+'</td></tr>').join('');
+  let payRows=Object.entries(byPayMode).map(([m,a])=>'<tr><td>'+m+'</td><td>₹'+a+'</td></tr>').join('');
+  document.getElementById('revenueResult').innerHTML='<div class="card">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px">'+
+    '<div style="background:#e8f8f5;padding:10px;border-radius:8px;text-align:center"><small>Total Revenue</small><br><b style="font-size:18px;color:#1a5276">₹'+totalRevenue+'</b></div>'+
+    '<div style="background:#eaf2f8;padding:10px;border-radius:8px;text-align:center"><small>Lab Share</small><br><b style="font-size:18px;color:#2980b9">₹'+totalLabShare+'</b></div>'+
+    '<div style="background:#e8f8f5;padding:10px;border-radius:8px;text-align:center"><small>Doctor Share</small><br><b style="font-size:18px;color:#27ae60">₹'+totalDocShare+'</b></div>'+
+    '<div style="background:#fdedec;padding:10px;border-radius:8px;text-align:center"><small>Discount</small><br><b style="font-size:18px;color:#c0392b">₹'+totalDisc+'</b></div>'+
+    '<div style="background:#fef9e7;padding:10px;border-radius:8px;text-align:center"><small>Collected</small><br><b style="font-size:18px;color:#b7950b">₹'+totalPaid+'</b></div>'+
+    '<div style="background:#fdedec;padding:10px;border-radius:8px;text-align:center"><small>Balance</small><br><b style="font-size:18px;color:#c0392b">₹'+totalBal+'</b></div>'+
+    '</div>'+
+    '<h3 style="font-size:14px">Doctor-wise</h3>'+
+    '<table><tr><th>Doctor</th><th>Patients</th><th>Revenue</th><th>Lab</th><th>Doctor</th></tr>'+docRows+'</table>'+
+    '<h3 style="font-size:14px;margin-top:12px">Payment Mode</h3>'+
+    '<table><tr><th>Mode</th><th>Amount</th></tr>'+payRows+'</table></div>';
+}
+
+// ========== BACKUP/RESTORE ==========
+function exportData(){
+  let blob=new Blob([JSON.stringify({rateLists,doctors,collectors,entries,settings,exported:new Date().toISOString()},null,2)],{type:'application/json'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hisab-backup-'+todayStr()+'.json';a.click();
+}
+function importData(e){
+  let file=e.target.files[0];if(!file) return;
+  let reader=new FileReader();
+  reader.onload=function(ev){
+    try{let data=JSON.parse(ev.target.result);
+      if(data.rateLists) rateLists=data.rateLists;if(data.doctors) doctors=data.doctors;
+      if(data.collectors) collectors=data.collectors;if(data.entries) entries=data.entries;
+      if(data.settings) settings=data.settings;
+      saveLocal();
+      // Push everything to supabase
+      if(dbReady){
+        rateLists.forEach(r=>sbSave('rate_lists',r.id,r));
+        doctors.forEach(d=>sbSave('doctors',d.id,d));
+        collectors.forEach(c=>sbSave('collectors',c.id,c));
+        entries.forEach(en=>sbSave('entries',en.id,en));
+        sbSaveSettings();
+      }
+      alert('Restore done! ✅');location.reload();
+    }catch(err){alert('File mein gadbad hai!');}
+  };reader.readAsText(file);e.target.value='';
+}
+
+// ========== INIT ==========
+function init(){
+  initDatePicker('e');initDatePicker('reg');
+  let d=todayStr();
+  document.getElementById('hFrom').value=d;document.getElementById('hTo').value=d;
+  document.getElementById('revFrom').value=d;document.getElementById('revTo').value=d;
+  populateDropdowns();renderRateLists();renderDoctors();renderCollectors();
+  togglePayFields();refreshSidebar();
+
+  // Init Supabase
+  initSupabase();
+
+  // ========== TAB/ENTER FAST KEYBOARD FLOW ==========
+  const FIELD_ORDER=['eDoctor','eName','eAge','eGender','eDisc','eDiscType','ePayStatus','ePaid','ePayMode','eCollector'];
+  function nextField(currentId){
+    let idx=FIELD_ORDER.indexOf(currentId);
+    if(idx<0) return;
+    for(let i=idx+1;i<FIELD_ORDER.length;i++){
+      let el=document.getElementById(FIELD_ORDER[i]);
+      if(el&&el.style.display!=='none'&&el.offsetParent!==null){el.focus();return;}
+    }
+    saveEntry();
+  }
+  FIELD_ORDER.forEach(id=>{
+    let el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('keydown',function(ev){
+      if(ev.key==='Enter'){ev.preventDefault();nextField(id);}
+    });
+  });
+}
+init();
+</script>
+</body>
+</html>
