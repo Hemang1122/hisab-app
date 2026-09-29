@@ -37,17 +37,31 @@ function getDateFromPicker(prefix) {
   return parts[0] + '-' + parts[1] + '-' + String(document.getElementById(prefix + 'Day').value).padStart(2, '0');
 }
 
+// ========== SIDEBAR ==========
+function toggleSidebar() {
+  let sb = document.getElementById('sidebar');
+  let ov = document.getElementById('sidebarOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('show');
+}
+
 // ========== TABS ==========
 let revUnlocked = false;
 const TAB_KEYS = ['entry', 'register', 'hisab', 'revenue', 'ratelist', 'doctors', 'settings'];
 
 function showTab(t) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-  let links = document.querySelectorAll('nav a');
-  links.forEach(a => a.classList.remove('active'));
   document.getElementById('tab-' + t).classList.add('active');
-  let idx = TAB_KEYS.indexOf(t);
-  if (idx >= 0 && links[idx]) links[idx].classList.add('active');
+
+  // Update sidebar active state
+  let navLinks = document.querySelectorAll('#sidebarNav a');
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.dataset.tab === t);
+  });
+
+  // Close sidebar on mobile
+  let sb = document.getElementById('sidebar');
+  if (sb.classList.contains('open')) toggleSidebar();
 
   if (t === 'revenue' && !revUnlocked && settings.revPassword) {
     document.getElementById('revContent').style.display = 'none';
@@ -87,14 +101,15 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 
 // ========== DROPDOWNS ==========
 function populateDropdowns() {
-  let docOpts = '<option value="">-- Select --</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
+  let selfOpt = '<option value="__self__">Self (Walk-in)</option>';
+  let docOpts = '<option value="">-- Select --</option>' + selfOpt + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   let eDoc = document.getElementById('eDoctor');
   let hDoc = document.getElementById('hDoctor');
   let regDoc = document.getElementById('regDocFilter');
   let eColl = document.getElementById('eCollector');
 
   if (eDoc) eDoc.innerHTML = docOpts;
-  if (hDoc) hDoc.innerHTML = docOpts;
-  if (regDoc) regDoc.innerHTML = '<option value="">Sabhi Doctors</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
+  if (hDoc) hDoc.innerHTML = '<option value="">-- Select --</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
+  if (regDoc) regDoc.innerHTML = '<option value="">Sabhi Doctors</option>' + '<option value="__self__">Self (Walk-in)</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   if (eColl) eColl.innerHTML = '<option value="">-- None --</option>' + collectors.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
 }

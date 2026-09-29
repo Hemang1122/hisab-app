@@ -8,24 +8,44 @@
 </head>
 <body>
 
-<div class="header">
-<div><h1>Shree Balaji Clinical Lab</h1><small>Hisab Management System</small></div>
-<div><span id="dbStatus" class="db-status db-loading">Connecting...</span></div>
+<!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <button class="sidebar-close" onclick="toggleSidebar()">&times;</button>
+  <div class="sidebar-header">
+    <h2>Shree Balaji Clinical Lab</h2>
+    <div class="sig">Mrs. Kumud S. Tripathi</div>
+  </div>
+  <div class="sidebar-nav" id="sidebarNav">
+    <a href="#" onclick="showTab('entry');return false" class="active" data-tab="entry"><span class="nav-icon">&#128221;</span> Naya Entry</a>
+    <a href="#" onclick="showTab('register');return false" data-tab="register"><span class="nav-icon">&#128203;</span> Register</a>
+    <a href="#" onclick="showTab('hisab');return false" data-tab="hisab"><span class="nav-icon">&#128424;</span> Hisab Print</a>
+    <a href="#" onclick="showTab('revenue');return false" data-tab="revenue"><span class="nav-icon">&#128200;</span> Revenue</a>
+    <a href="#" onclick="showTab('ratelist');return false" data-tab="ratelist"><span class="nav-icon">&#128196;</span> Rate List</a>
+    <a href="#" onclick="showTab('doctors');return false" data-tab="doctors"><span class="nav-icon">&#129658;</span> Doctors &amp; Staff</a>
+    <a href="#" onclick="showTab('settings');return false" data-tab="settings"><span class="nav-icon">&#9881;</span> Settings</a>
+  </div>
+  <div class="sidebar-footer">SBCL Hisab v2.0</div>
 </div>
 
-<nav>
-<a href="#" onclick="showTab('entry');return false" class="active">Naya Entry</a>
-<a href="#" onclick="showTab('register');return false">Register</a>
-<a href="#" onclick="showTab('hisab');return false">Hisab Print</a>
-<a href="#" onclick="showTab('revenue');return false">Revenue</a>
-<a href="#" onclick="showTab('ratelist');return false">Rate List</a>
-<a href="#" onclick="showTab('doctors');return false">Doctors & Staff</a>
-<a href="#" onclick="showTab('settings');return false">Settings</a>
-</nav>
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+    <div class="header-brand">
+      <h1>Shree Balaji Clinical Lab</h1>
+      <small>Hisab Management System</small>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="signature">Mrs. Kumud S. Tripathi</div>
+    <span id="dbStatus" class="db-status db-loading">Connecting...</span>
+  </div>
+</div>
 
 <!-- TAB: Naya Entry -->
 <div id="tab-entry" class="tab active">
-<h2>Naya Entry</h2>
+<div class="section-header"><h2>&#128221; Naya Entry</h2></div>
 <div class="entry-layout">
 <div class="entry-form">
 <div class="card">
@@ -38,7 +58,7 @@
 </div>
 </div>
 <div><label>Doctor / Hospital</label>
-<select id="eDoctor"><option value="">-- Select --</option></select></div>
+<select id="eDoctor"><option value="">-- Select --</option><option value="__self__">Self (Walk-in)</option></select></div>
 </div>
 <div class="row">
 <div><label>Patient Ka Naam</label><input id="eName" placeholder="Patient name"></div>
@@ -48,7 +68,7 @@
 </div>
 <hr>
 <label>Tests (Rate List: <span id="rlName">-</span>)</label>
-<div id="testCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px"></div>
+<div id="testCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius);padding:6px"></div>
 <div class="total-bar" id="entryTotals" style="display:none">
 <span>Subtotal: &#8377;<b id="eSubtotal">0</b></span>
 <span>Discount: &#8377;<b id="eDiscAmt">0</b></span>
@@ -94,7 +114,7 @@
 
 <!-- TAB: Register -->
 <div id="tab-register" class="tab">
-<h2>Register</h2>
+<div class="section-header"><h2>&#128203; Register</h2></div>
 <div class="row no-print" style="margin-bottom:10px">
 <div><div class="date-picker">
 <select id="regMonth" onchange="updateDateDropdown('reg');renderRegister()"></select>
@@ -108,7 +128,7 @@
 
 <!-- TAB: Hisab Print -->
 <div id="tab-hisab" class="tab">
-<h2>Hisab Print</h2>
+<div class="section-header"><h2>&#128424; Hisab Print</h2></div>
 <div class="card no-print">
 <div class="row">
 <div><label>Date From</label><input type="date" id="hFrom"></div>
@@ -128,13 +148,13 @@
 
 <!-- TAB: Revenue -->
 <div id="tab-revenue" class="tab">
-<h2>Revenue Dashboard</h2>
+<div class="section-header"><h2>&#128200; Revenue Dashboard</h2></div>
 <div id="revContent" style="display:none">
 <div class="card no-print">
 <div class="row">
 <div><label>Date From</label><input type="date" id="revFrom"></div>
 <div><label>Date To</label><input type="date" id="revTo"></div>
-<div style="align-self:end"><button class="btn btn-primary" onclick="showRevenue()">Show</button></div>
+<div style="align-self:end"><button class="btn btn-primary" onclick="showRevenue()">&#128269; Show Revenue</button></div>
 </div>
 </div>
 <div id="revenueResult"></div>
@@ -143,28 +163,34 @@
 
 <!-- TAB: Rate List -->
 <div id="tab-ratelist" class="tab">
-<h2>Rate Lists</h2>
+<div class="section-header">
+<h2>&#128196; Rate Lists</h2>
 <button class="btn btn-primary no-print" onclick="openRLModal()">+ Nayi Rate List</button>
-<div id="rateListsView" style="margin-top:12px"></div>
+</div>
+<div id="rateListsView"></div>
 </div>
 
 <!-- TAB: Doctors & Staff -->
 <div id="tab-doctors" class="tab">
-<h2>Doctors & Hospitals</h2>
-<button class="btn btn-primary no-print" onclick="openDocModal()">+ Naya Doctor / Hospital</button>
-<div id="doctorsList" style="margin-top:12px"></div>
+<div class="section-header">
+<h2>&#129658; Doctors &amp; Hospitals</h2>
+<button class="btn btn-primary no-print" onclick="openDocModal()">+ Naya Doctor</button>
+</div>
+<div id="doctorsList"></div>
 <hr>
+<div class="section-header">
 <h2>Collection Boys</h2>
 <button class="btn btn-primary no-print" onclick="openCollModal()">+ Naya Collection Boy</button>
-<div id="collectorsList" style="margin-top:12px"></div>
+</div>
+<div id="collectorsList"></div>
 </div>
 
 <!-- TAB: Settings -->
 <div id="tab-settings" class="tab">
-<h2>Settings</h2>
+<div class="section-header"><h2>&#9881; Settings</h2></div>
 <div class="card">
 <h3 style="font-size:14px">&#9889; Supabase Database</h3>
-<p style="font-size:12px;color:#666;margin:4px 0 8px">Status: <span id="fbSettingsStatus">-</span></p>
+<p style="font-size:12px;color:var(--gray-500);margin:4px 0 8px">Status: <span id="fbSettingsStatus">-</span></p>
 <button class="btn btn-sm btn-primary" onclick="openSupabaseSetup()">Setup / Change Supabase</button>
 <button class="btn btn-sm btn-danger" onclick="disconnectSupabase()" style="margin-left:6px">Disconnect</button>
 </div>
@@ -174,12 +200,25 @@
 <input id="setRevPw" type="password" placeholder="Password enter karo">
 <button class="btn btn-primary btn-sm" onclick="saveRevPassword()" style="margin-top:8px">Save Password</button>
 </div>
-<div class="card" style="margin-top:12px">
-<h3 style="font-size:14px">Data Backup & Restore</h3>
+<div class="card">
+<h3 style="font-size:14px">Data Backup &amp; Restore</h3>
 <div class="row" style="margin-top:8px">
 <button class="btn btn-secondary" onclick="exportData()">&#128229; Backup Download</button>
 <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">&#128228; Restore Upload</button>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+</div>
+</div>
+
+<!-- Self Rate List Modal -->
+<div class="modal-overlay" id="selfRLModal">
+<div class="modal">
+<h3>&#128203; Select Rate List (Self Patient)</h3>
+<label>Rate List Chuno</label>
+<select id="selfRLSelect"><option value="">-- Select Rate List --</option></select>
+<div style="margin-top:12px;display:flex;gap:8px">
+<button class="btn btn-primary" onclick="applySelfRL()">Apply</button>
+<button class="btn btn-secondary" onclick="closeModal('selfRLModal');document.getElementById('eDoctor').value=''">Cancel</button>
 </div>
 </div>
 </div>
@@ -190,7 +229,7 @@
 <h3>&#128274; Password Daalo</h3>
 <input type="password" id="revPwInput" placeholder="Revenue password" onkeydown="if(event.key==='Enter')checkRevPw()">
 <button class="btn btn-primary" onclick="checkRevPw()" style="width:100%">Unlock</button>
-<p id="pwError" style="color:red;font-size:12px;margin-top:8px"></p>
+<p id="pwError" style="color:var(--danger);font-size:12px;margin-top:8px"></p>
 </div>
 </div>
 
@@ -198,12 +237,12 @@
 <div id="supabaseSetup">
 <div class="modal" style="max-width:500px">
 <h3>&#9889; Supabase Setup</h3>
-<p style="font-size:12px;color:#555;margin-bottom:10px">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> &rarr; Create Project &rarr; Go to Settings &rarr; API &rarr; Copy the <b>Project URL</b> and <b>anon public</b> key below. Then go to SQL Editor and run the setup SQL (shown below).</p>
+<p style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> &rarr; Create Project &rarr; Settings &rarr; API &rarr; Copy <b>Project URL</b> and <b>anon public</b> key. Then run the SQL below in SQL Editor.</p>
 <label>Supabase Project URL</label>
 <input id="sbUrl" placeholder="https://xxxxx.supabase.co">
 <label>Anon Key</label>
 <input id="sbKey" placeholder="eyJhbGciOi...">
-<div style="margin-top:8px;padding:8px;background:#f8f8f8;border-radius:6px;font-size:11px;font-family:monospace;max-height:140px;overflow-y:auto;white-space:pre-wrap" id="sqlSetup"></div>
+<div style="margin-top:8px;padding:8px;background:var(--gray-50);border-radius:var(--radius);font-size:11px;font-family:monospace;max-height:140px;overflow-y:auto;white-space:pre-wrap" id="sqlSetup"></div>
 <div style="margin-top:6px"><button class="btn btn-sm btn-secondary" onclick="copySql()">Copy SQL</button></div>
 <div style="margin-top:10px;display:flex;gap:8px">
 <button class="btn btn-primary" onclick="saveSupabaseConfig()">Connect</button>
@@ -219,7 +258,7 @@
 <label>Rate List Ka Naam</label>
 <input id="rlNameInput" placeholder="e.g. Rate List 1">
 <label style="margin-top:8px">Ye Rate List Kin Doctors Ko Assign Karo</label>
-<div id="rlDoctorCheckboxes" style="max-height:100px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px;margin-bottom:6px"></div>
+<div id="rlDoctorCheckboxes" style="max-height:100px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius);padding:6px;margin-bottom:6px"></div>
 <div style="margin:8px 0">
 <button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
 </div>

@@ -19,29 +19,64 @@ function initDoctorChange() {
   let el = document.getElementById('eDoctor');
   if (!el) return;
   el.addEventListener('change', function () {
-    let doc = doctors.find(d => d.id === this.value);
+    let val = this.value;
     let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
+
+    // Handle Self (Walk-in)
+    if (val === '__self__') {
+      let sel = document.getElementById('selfRLSelect');
+      sel.innerHTML = '<option value="">-- Select Rate List --</option>' + rateLists.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
+      document.getElementById('selfRLModal').classList.add('show');
+      return;
+    }
+
+    let doc = doctors.find(d => d.id === val);
     if (!doc || !doc.rateListId) {
       container.innerHTML = '<div class="empty" style="padding:10px">Pehle doctor select karo jisko rate list assigned ho</div>';
       rlSpan.textContent = '-'; return;
     }
     let rl = rateLists.find(r => r.id === doc.rateListId);
     if (!rl) { container.innerHTML = '<div class="empty" style="padding:10px">Rate list nahi mili</div>'; rlSpan.textContent = '-'; return; }
-    rlSpan.textContent = rl.name;
-    container.innerHTML = rl.tests.map((t, i) => '<div class="test-row">' +
-      '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
-      '<input type="checkbox" class="test-cb" data-idx="' + i + '" onchange="calcEntry()"> ' +
-      '<span class="tname">' + t.name + '</span></label>' +
-      '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
-      '<span class="trate">₹' + t.rate + '</span></div>').join('');
-    calcEntry();
+    loadTestCheckboxes(rl);
   });
 }
 
+function loadTestCheckboxes(rl) {
+  let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
+  rlSpan.textContent = rl.name;
+  container.innerHTML = rl.tests.map((t, i) => '<div class="test-row">' +
+    '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
+    '<input type="checkbox" class="test-cb" data-idx="' + i + '" data-rlid="' + rl.id + '" onchange="calcEntry()"> ' +
+    '<span class="tname">' + t.name + '</span></label>' +
+    '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
+    '<span class="trate">&#8377;' + t.rate + '</span></div>').join('');
+  calcEntry();
+}
+
+// Apply rate list for Self (Walk-in) patients
+function applySelfRL() {
+  let rlId = document.getElementById('selfRLSelect').value;
+  if (!rlId) return alert('Rate list select karo!');
+  let rl = rateLists.find(r => r.id === rlId);
+  if (!rl) return alert('Rate list nahi mili!');
+  closeModal('selfRLModal');
+  // Store selected RL id for self patient
+  document.getElementById('eDoctor').dataset.selfRlId = rlId;
+  loadTestCheckboxes(rl);
+}
+
 function getSelectedTests() {
-  let doc = doctors.find(d => d.id === document.getElementById('eDoctor').value);
-  if (!doc || !doc.rateListId) return [];
-  let rl = rateLists.find(r => r.id === doc.rateListId); if (!rl) return [];
+  let docVal = document.getElementById('eDoctor').value;
+  let rl;
+  if (docVal === '__self__') {
+    let rlId = document.getElementById('eDoctor').dataset.selfRlId;
+    rl = rateLists.find(r => r.id === rlId);
+  } else {
+    let doc = doctors.find(d => d.id === docVal);
+    if (!doc || !doc.rateListId) return [];
+    rl = rateLists.find(r => r.id === doc.rateListId);
+  }
+  if (!rl) return [];
   let selected = [];
   document.querySelectorAll('.test-cb:checked').forEach(cb => {
     let idx = parseInt(cb.dataset.idx); if (rl.tests[idx]) selected.push({ ...rl.tests[idx] });
@@ -62,17 +97,20 @@ function calcEntry() {
   document.getElementById('entryTotals').style.display = tests.length ? 'flex' : 'none';
   let bd = document.getElementById('balDisplay');
   if (document.getElementById('ePayStatus').value === 'paid') {
-    bd.innerHTML = '<span class="paid-display">Full Paid ₹' + total + '</span>';
+    bd.innerHTML = '<span class="paid-display">Full Paid &#8377;' + total + '</span>';
   } else {
     let bal = Math.max(0, total - (parseFloat(document.getElementById('ePaid').value) || 0));
-    bd.innerHTML = '<span class="bal-display">Balance: ₹' + bal + '</span>';
+    bd.innerHTML = '<span class="bal-display">Balance: &#8377;' + bal + '</span>';
   }
 }
 
 function saveEntry() {
-  let docId = document.getElementById('eDoctor').value;
-  let doc = doctors.find(d => d.id === docId);
-  if (!doc) return alert('Doctor select karo!');
+  let docVal = document.getElementById('eDoctor').value;
+  let isSelf = docVal === '__self__';
+  if (!isSelf) {
+    let doc = doctors.find(d => d.id === docVal);
+    if (!doc) return alert('Doctor select karo!');
+  }
   let name = document.getElementById('eName').value.trim();
   if (!name) return alert('Patient ka naam daalo!');
   let tests = getSelectedTests();
@@ -83,10 +121,11 @@ function saveEntry() {
   let discAmt = discType === 'pc' ? Math.round(subtotal * disc / 100) : disc;
   let total = Math.max(0, subtotal - discAmt);
   let payInfo = getPaymentInfo();
+  let docName = isSelf ? 'Self' : doctors.find(d => d.id === docVal).name;
   let entry = {
     id: uid(),
     date: getDateFromPicker('e'),
-    doctorId: docId, doctorName: doc.name, name,
+    doctorId: docVal, doctorName: docName, name,
     age: document.getElementById('eAge').value,
     gender: document.getElementById('eGender').value,
     tests, subtotal, discount: discAmt, total,
@@ -124,12 +163,12 @@ function refreshSidebar() {
   let rows = dayEntries.map((e, i) => {
     totalAmt += e.total; totalPaid += e.paid;
     let tnames = e.tests.map(t => t.name).join(', ');
-    let st = e.balance > 0 ? '<span class="badge badge-red">₹' + e.balance + '</span>' : '<span class="badge badge-green">Paid</span>';
-    return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + e.doctorName + '</td><td style="font-size:11px;max-width:100px">' + tnames + '</td><td>₹' + e.total + '</td><td>' + st + '</td>' +
-      '<td><button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">✕</button></td></tr>';
+    let st = e.balance > 0 ? '<span class="badge badge-red">&#8377;' + e.balance + '</span>' : '<span class="badge badge-green">Paid</span>';
+    return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + e.doctorName + '</td><td style="font-size:11px;max-width:100px">' + tnames + '</td><td>&#8377;' + e.total + '</td><td>' + st + '</td>' +
+      '<td><button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">&#10005;</button></td></tr>';
   }).join('');
   c.innerHTML = '<table><tr><th>#</th><th>Naam</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Status</th><th></th></tr>' + rows + '</table>' +
-    '<div style="font-size:12px;margin-top:6px;color:#555"><b>' + dayEntries.length + '</b> entries | Total: <b>₹' + totalAmt + '</b> | Paid: <b>₹' + totalPaid + '</b> | Baaki: <b style="color:#c0392b">₹' + (totalAmt - totalPaid) + '</b></div>';
+    '<div style="font-size:12px;margin-top:6px;color:var(--gray-500)"><b>' + dayEntries.length + '</b> entries | Total: <b>&#8377;' + totalAmt + '</b> | Paid: <b>&#8377;' + totalPaid + '</b> | Baaki: <b style="color:var(--danger)">&#8377;' + (totalAmt - totalPaid) + '</b></div>';
 }
 
 // ========== KEYBOARD FLOW ==========
