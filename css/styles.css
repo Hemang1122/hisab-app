@@ -395,6 +395,37 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
   .row { gap:8px; }
 }
 
+/* ========== HISAB PRINT STYLES ========== */
+.hisab-print { background:#fff; border-radius:var(--radius-lg); padding:28px; box-shadow:var(--shadow); border:1px solid var(--n150); }
+.hisab-header { text-align:center; margin-bottom:16px; padding-bottom:14px; border-bottom:2px solid var(--brand); }
+.hisab-lab-name { font-size:20px; font-weight:700; color:var(--brand); margin:0; letter-spacing:-.3px; }
+.hisab-subtitle { font-size:12px; color:var(--n400); margin:4px 0 0; letter-spacing:.5px; text-transform:uppercase; }
+.hisab-doctor-bar {
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  padding:10px 14px; background:var(--brand-surface); border-radius:var(--radius);
+  font-size:13px; margin-bottom:14px; border-left:3px solid var(--accent);
+}
+.hisab-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:16px; }
+.hisab-table th { background:var(--brand); color:#fff; padding:8px 10px; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+.hisab-table td { padding:7px 10px; border-bottom:1px solid var(--n150); }
+.hisab-table tbody tr:hover td { background:var(--n50); }
+.hisab-summary {
+  background:var(--n50); border:1px solid var(--n200); border-radius:var(--radius-lg);
+  padding:18px; margin-bottom:24px;
+}
+.hisab-summary-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--n500); margin-bottom:10px; }
+.hisab-summary-grid { font-size:14px; }
+.hisab-summary-grid .flex-between { padding:4px 0; }
+.hisab-summary-grid hr { margin:8px 0; }
+.hisab-signatures {
+  display:flex; justify-content:space-between; gap:40px; margin-top:20px;
+  padding-top:20px;
+}
+.hisab-sig-block { flex:1; text-align:center; }
+.hisab-sig-line { border-bottom:1px solid var(--n300); margin-bottom:8px; height:50px; }
+.hisab-sig-label { font-size:11px; color:var(--n400); text-transform:uppercase; letter-spacing:.4px; }
+.hisab-sig-name { font-size:13px; font-weight:600; color:var(--n700); margin-top:2px; }
+
 /* ========== PRINT ========== */
 @media print {
   body { background:#fff!important; }
