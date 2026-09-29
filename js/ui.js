@@ -63,6 +63,12 @@ function showTab(t, skipHistory) {
   let sb = document.getElementById('sidebar');
   if (sb.classList.contains('open')) toggleSidebar();
 
+  // Gradient transition effect
+  document.body.classList.remove('page-transition');
+  void document.body.offsetWidth; // force reflow
+  document.body.classList.add('page-transition');
+  setTimeout(() => document.body.classList.remove('page-transition'), 600);
+
   // Push to browser history so Back button works between tabs
   if (!skipHistory) {
     history.pushState({ tab: t }, '', '#' + t);
