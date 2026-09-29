@@ -188,7 +188,23 @@ function initKeyboardFlow() {
     let el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter') { ev.preventDefault(); nextField(id); }
+      if (ev.key === 'Enter') {
+        // For select dropdowns: first Enter opens it, second Enter (after picking) moves on
+        if (el.tagName === 'SELECT' && !el.dataset.opened) {
+          ev.preventDefault();
+          el.dataset.opened = '1';
+          // showPicker opens native dropdown on supported browsers
+          if (typeof el.showPicker === 'function') { try { el.showPicker(); } catch(e){} }
+          return;
+        }
+        delete el.dataset.opened;
+        ev.preventDefault();
+        nextField(id);
+      }
     });
+    // Reset opened flag when selection changes
+    if (el.tagName === 'SELECT') {
+      el.addEventListener('change', function() { delete el.dataset.opened; });
+    }
   });
 }
