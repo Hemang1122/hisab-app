@@ -149,7 +149,6 @@
 <!-- TAB: Revenue -->
 <div id="tab-revenue" class="tab">
 <div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#128200; Revenue Dashboard</h2></div>
-<div id="revContent" style="display:none">
 <div class="card no-print">
 <div class="row">
 <div><label>Date From</label><input type="date" id="revFrom"></div>
@@ -158,7 +157,6 @@
 </div>
 </div>
 <div id="revenueResult"></div>
-</div>
 </div>
 
 <!-- TAB: Rate List -->
@@ -223,15 +221,6 @@
 </div>
 </div>
 
-<!-- Password Overlay -->
-<div id="passwordOverlay">
-<div class="pw-box">
-<h3>&#128274; Password Daalo</h3>
-<input type="password" id="revPwInput" placeholder="Revenue password" onkeydown="if(event.key==='Enter')checkRevPw()">
-<button class="btn btn-primary" onclick="checkRevPw()" style="width:100%">Unlock</button>
-<p id="pwError" style="color:var(--danger);font-size:12px;margin-top:8px"></p>
-</div>
-</div>
 
 <!-- Supabase Setup Modal -->
 <div id="supabaseSetup">

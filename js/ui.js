@@ -74,13 +74,6 @@ function showTab(t, skipHistory) {
     history.pushState({ tab: t }, '', '#' + t);
   }
 
-  if (t === 'revenue' && !revUnlocked && settings.revPassword) {
-    document.getElementById('revContent').style.display = 'none';
-    document.getElementById('passwordOverlay').classList.add('show');
-    setTimeout(() => document.getElementById('revPwInput').focus(), 100);
-  } else if (t === 'revenue') {
-    document.getElementById('revContent').style.display = 'block';
-  }
   if (t === 'register') renderRegister();
   if (t === 'ratelist') renderRateLists();
   if (t === 'doctors') renderDoctors();
@@ -93,17 +86,13 @@ window.addEventListener('popstate', function(e) {
   if (TAB_KEYS.includes(tab)) showTab(tab, true);
 });
 
-// ========== PASSWORD ==========
-function checkRevPw() {
-  if (document.getElementById('revPwInput').value === settings.revPassword) {
-    revUnlocked = true;
-    document.getElementById('passwordOverlay').classList.remove('show');
-    document.getElementById('revContent').style.display = 'block';
-    document.getElementById('revPwInput').value = '';
-    document.getElementById('pwError').textContent = '';
-  } else {
-    document.getElementById('pwError').textContent = 'Galat password!';
-  }
+// ========== PASSWORD (inline prompt before showing revenue data) ==========
+function checkRevAccess() {
+  if (revUnlocked || !settings.revPassword) return true;
+  let pw = prompt('Revenue password daalo:');
+  if (pw === settings.revPassword) { revUnlocked = true; return true; }
+  if (pw !== null) alert('Galat password!');
+  return false;
 }
 
 function saveRevPassword() {

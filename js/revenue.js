@@ -1,6 +1,7 @@
 // ========== REVENUE DASHBOARD (Enhanced) ==========
 
 function showRevenue() {
+  if (!checkRevAccess()) return;
   let from = document.getElementById('revFrom').value, to = document.getElementById('revTo').value;
   if (!from || !to) return alert('Date range select karo!');
   let filtered = entries.filter(e => e.date >= from && e.date <= to);
