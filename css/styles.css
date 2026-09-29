@@ -48,8 +48,19 @@
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 body {
   font-family:'DM Sans',system-ui,-apple-system,sans-serif;
-  background:#f5f3f0; color:var(--n800); font-size:14px; line-height:1.6;
+  background:linear-gradient(135deg, #f5f3f0 0%, #e8f1ec 25%, #f5f0e8 50%, #eef3f0 75%, #f5f3f0 100%);
+  background-size:400% 400%;
+  animation:bgShift 15s ease infinite;
+  color:var(--n800); font-size:14px; line-height:1.6;
   -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+@keyframes bgShift {
+  0% { background-position:0% 50%; }
+  25% { background-position:100% 25%; }
+  50% { background-position:50% 100%; }
+  75% { background-position:25% 0%; }
+  100% { background-position:0% 50%; }
 }
 
 /* ========== HEADER ========== */
@@ -106,13 +117,19 @@ body {
 }
 .sidebar.open { transform:translateX(272px); }
 .sidebar-header {
-  padding:24px 20px 18px; background:var(--brand); color:#fff;
+  padding:24px 20px 20px; background:var(--brand); color:#fff;
   border-bottom:3px solid var(--accent);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
 }
-.sidebar-header h2 { font-size:15px; font-weight:600; letter-spacing:-.1px; }
-.sidebar-header .sig {
-  font-family:'Playfair Display',Georgia,serif; font-style:italic;
-  font-size:16px; color:var(--accent); margin-top:6px; font-weight:600;
+.sidebar-logo {
+  width:56px; height:56px; border-radius:50%; background:rgba(255,255,255,.1);
+  border:2.5px solid var(--accent); display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:700; color:var(--accent);
+  font-family:'Playfair Display',Georgia,serif;
+}
+.sidebar-brand-text {
+  font-size:13px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase;
+  color:rgba(255,255,255,.7);
 }
 .sidebar-close {
   position:absolute; top:18px; right:14px; background:transparent; border:1.5px solid rgba(255,255,255,.2);
