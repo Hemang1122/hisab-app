@@ -49,7 +49,7 @@ function toggleSidebar() {
 let revUnlocked = false;
 const TAB_KEYS = ['entry', 'register', 'hisab', 'revenue', 'ratelist', 'doctors', 'settings'];
 
-function showTab(t) {
+function showTab(t, skipHistory) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + t).classList.add('active');
 
@@ -63,6 +63,11 @@ function showTab(t) {
   let sb = document.getElementById('sidebar');
   if (sb.classList.contains('open')) toggleSidebar();
 
+  // Push to browser history so Back button works between tabs
+  if (!skipHistory) {
+    history.pushState({ tab: t }, '', '#' + t);
+  }
+
   if (t === 'revenue' && !revUnlocked && settings.revPassword) {
     document.getElementById('revContent').style.display = 'none';
     document.getElementById('passwordOverlay').classList.add('show');
@@ -75,6 +80,12 @@ function showTab(t) {
   if (t === 'doctors') renderDoctors();
   if (t === 'entry') refreshSidebar();
 }
+
+// Browser back/forward button support
+window.addEventListener('popstate', function(e) {
+  let tab = (e.state && e.state.tab) ? e.state.tab : 'entry';
+  if (TAB_KEYS.includes(tab)) showTab(tab, true);
+});
 
 // ========== PASSWORD ==========
 function checkRevPw() {
