@@ -264,33 +264,22 @@ function seedDefaultData() {
   }
 }
 
-// Sync 60-40 rate list from 50-50: add missing tests AND fix prices/types to match
+// Rebuild 60-40 rate list from 50-50: same tests, same prices, 60/40 split
 function syncRateLists() {
   let rl5050 = rateLists.find(r => r.id === 'rl_5050');
   let rl6040 = rateLists.find(r => r.id === 'rl_6040');
   if (!rl5050 || !rl6040) return;
-  let changed = false;
-  let existingMap = {};
-  rl6040.tests.forEach((t, i) => { existingMap[t.name] = i; });
-  rl5050.tests.forEach(src => {
+  // Check if any test is missing or has rate 0
+  let needsRebuild = rl6040.tests.length !== rl5050.tests.length ||
+    rl6040.tests.some(t => !t.rate || !t.labShare || !t.docShare);
+  if (!needsRebuild) return;
+  // Rebuild entirely from 50-50
+  rl6040.tests = rl5050.tests.map(src => {
     let doc60 = Math.floor(src.rate * 0.6);
-    let lab40 = src.rate - doc60;
-    if (src.name in existingMap) {
-      // Update price/type if different
-      let t = rl6040.tests[existingMap[src.name]];
-      if (t.rate !== src.rate || t.type !== src.type || t.docShare !== doc60 || t.labShare !== lab40) {
-        t.rate = src.rate; t.type = src.type; t.docShare = doc60; t.labShare = lab40;
-        changed = true;
-      }
-    } else {
-      rl6040.tests.push({ name: src.name, rate: src.rate, labShare: lab40, docShare: doc60, type: src.type });
-      changed = true;
-    }
+    return { name: src.name, rate: src.rate, labShare: src.rate - doc60, docShare: doc60, type: src.type };
   });
-  if (changed) {
-    saveLocal();
-    if (dbReady) sbSave('rate_lists', rl6040.id, rl6040);
-  }
+  saveLocal();
+  if (dbReady) sbSave('rate_lists', rl6040.id, rl6040);
 }
 
 function saveLocal() {
@@ -347,6 +336,7 @@ async function loadAllFromSupabase() {
     if (cfgData && cfgData.data) settings = { ...settings, ...cfgData.data };
 
     saveLocal();
+    syncRateLists(); // fix 60-40 from 50-50 after Supabase load
     setDbStatus('Online ✓', 'db-online');
 
     // Refresh UI after sync
