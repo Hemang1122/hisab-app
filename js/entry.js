@@ -165,7 +165,7 @@ function getSelectedTests() {
     let idx = parseInt(cb.dataset.idx);
     if (rl.tests[idx]) {
       let t = rl.tests[idx];
-      let shares = calcShares(t.rate, docPercent);
+      let shares = calcShares(t.rate, docPercent, t);
       selected.push({ name: t.name, rate: t.rate, type: t.type, labShare: shares.labShare, docShare: shares.docShare });
     }
   });

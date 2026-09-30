@@ -8,6 +8,9 @@ function openRLModal(id) {
   editingRL = id || null;
   document.getElementById('rlModalTitle').textContent = id ? 'Rate List Edit' : 'Nayi Rate List';
   document.getElementById('rlTestRows').innerHTML = '';
+  // Reset search
+  let srch = document.getElementById('rlModalSearch');
+  if (srch) srch.value = '';
   if (id) {
     let rl = rateLists.find(r => r.id === id);
     document.getElementById('rlNameInput').value = rl.name;
@@ -21,14 +24,26 @@ function openRLModal(id) {
 function addRLTest(data) {
   let div = document.createElement('div');
   div.style.cssText = 'border:1px solid #eee;border-radius:6px;padding:8px;margin-bottom:6px;position:relative';
+  div.dataset.testname = data ? data.name.toLowerCase() : '';
   let n = data ? data.name : '', r = data ? data.rate : '', tp = data ? data.type : 'normal';
+  let cds = data && data.customDocShare != null ? data.customDocShare : '';
+  let cls = data && data.customLabShare != null ? data.customLabShare : '';
   div.innerHTML = '<button class="del-btn" onclick="this.parentElement.remove()" style="position:absolute;right:4px;top:4px">✕</button>' +
-    '<input placeholder="Test name" value="' + n + '" class="rlt-name" style="margin-bottom:4px">' +
+    '<input placeholder="Test name" value="' + n + '" class="rlt-name" style="margin-bottom:4px" oninput="this.parentElement.dataset.testname=this.value.toLowerCase()">' +
     '<div style="display:flex;gap:6px">' +
-    '<input type="number" placeholder="Rate ₹" value="' + r + '" class="rlt-rate" style="width:50%">' +
-    '<select class="rlt-type" style="width:50%"><option value="normal" ' + (tp === 'normal' ? 'selected' : '') + '>Normal</option><option value="special" ' + (tp === 'special' ? 'selected' : '') + '>Special</option></select>' +
+    '<input type="number" placeholder="Rate ₹" value="' + r + '" class="rlt-rate" style="width:34%">' +
+    '<select class="rlt-type" style="width:22%"><option value="normal" ' + (tp === 'normal' ? 'selected' : '') + '>Normal</option><option value="special" ' + (tp === 'special' ? 'selected' : '') + '>Special</option></select>' +
+    '<input type="number" placeholder="Dr ₹" value="' + cds + '" class="rlt-doc-share" style="width:22%" title="Custom Doctor Share (leave empty for auto)">' +
+    '<input type="number" placeholder="Lab ₹" value="' + cls + '" class="rlt-lab-share" style="width:22%" title="Custom Lab Share (leave empty for auto)">' +
     '</div>';
   document.getElementById('rlTestRows').appendChild(div);
+}
+
+function filterRLModal() {
+  let q = (document.getElementById('rlModalSearch').value || '').toLowerCase();
+  document.querySelectorAll('#rlTestRows > div').forEach(div => {
+    div.style.display = div.dataset.testname.includes(q) ? '' : 'none';
+  });
 }
 
 function saveRateList() {
@@ -39,7 +54,20 @@ function saveRateList() {
     let n = div.querySelector('.rlt-name').value.trim();
     let r = parseFloat(div.querySelector('.rlt-rate').value) || 0;
     let t = div.querySelector('.rlt-type').value;
-    if (n) tests.push({ name: n, rate: r, type: t });
+    let cdsRaw = div.querySelector('.rlt-doc-share').value.trim();
+    let clsRaw = div.querySelector('.rlt-lab-share').value.trim();
+    if (!n) return;
+    let test = { name: n, rate: r, type: t };
+    // If either custom share is set, save both (auto-fill the other)
+    if (cdsRaw !== '' || clsRaw !== '') {
+      let cds = cdsRaw !== '' ? parseFloat(cdsRaw) || 0 : null;
+      let cls = clsRaw !== '' ? parseFloat(clsRaw) || 0 : null;
+      if (cds != null && cls == null) cls = Math.max(0, r - cds);
+      if (cls != null && cds == null) cds = Math.max(0, r - cls);
+      test.customDocShare = cds;
+      test.customLabShare = cls;
+    }
+    tests.push(test);
   });
   if (!tests.length) return alert('Kam se kam ek test add karo!');
   let rlId;
@@ -65,12 +93,17 @@ function renderRateLists() {
     let incomplete = isIncomplete ? ' style="background:var(--warn-bg)"' : '';
     let warn = isIncomplete ? ' ⚠️' : '';
     let ec = 'cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px';
+    let hasCustom = t.customDocShare != null && t.customLabShare != null;
+    let docShareTxt = hasCustom ? '₹' + t.customDocShare : '<span style="color:#aaa">auto</span>';
+    let labShareTxt = hasCustom ? '₹' + t.customLabShare : '<span style="color:#aaa">auto</span>';
     return '<tr class="rl-test-row" data-rlid="' + rl.id + '" data-testname="' + t.name.toLowerCase() + '" data-incomplete="' + (isIncomplete ? '1' : '0') + '"' + incomplete + '>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'name\',this)">' + t.name + warn + '</td>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'type\',this)"><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'rate\',this)">₹' + (t.rate || 0) + '</td>' +
-      '<td></td></tr>';
-  }).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
+      '<td style="' + ec + ';text-align:center;font-size:11px" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'customDocShare\',this)">' + docShareTxt + '</td>' +
+      '<td style="' + ec + ';text-align:center;font-size:11px" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'customLabShare\',this)">' + labShareTxt + '</td>' +
+      '</tr>';
+  }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
 
   // Search + filter toolbar
   let toolbar = '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">' +
@@ -92,7 +125,7 @@ function renderRateLists() {
     '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')" style="font-size:11px;padding:4px 8px">Edit All</button></div></div>' +
     (docSplits ? '<div style="margin-bottom:8px"><small style="color:#666">Doctor Splits:</small><br>' + docSplits + '</div>' : '') +
     '<div><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
-    '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th></th></tr>' + rows + '</table></div></div></div>';
+    '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th style="text-align:center">Dr. Share</th><th style="text-align:center">Lab Share</th></tr>' + rows + '</table></div></div></div>';
 }
 
 function toggleRLTests(btn) {
@@ -203,10 +236,11 @@ function inlineEditField(rlId, idx, field, td) {
     return;
   }
 
-  let isNum = (field === 'rate');
+  let isNum = (field === 'rate' || field === 'customDocShare' || field === 'customLabShare');
   let input = document.createElement('input');
   input.type = isNum ? 'number' : 'text';
-  input.value = oldVal || '';
+  input.placeholder = (field === 'customDocShare' || field === 'customLabShare') ? 'auto' : '';
+  input.value = (oldVal != null) ? oldVal : '';
   input.style.cssText = 'width:100%;padding:3px 5px;font-size:12px;border:1px solid var(--accent);border-radius:4px;box-sizing:border-box';
   td.textContent = '';
   td.appendChild(input);
@@ -214,9 +248,27 @@ function inlineEditField(rlId, idx, field, td) {
   input.select();
 
   function commit() {
-    let val = isNum ? (parseFloat(input.value) || 0) : input.value.trim();
-    if (field === 'name' && !val) val = oldVal;
-    t[field] = val;
+    if (field === 'customDocShare' || field === 'customLabShare') {
+      let raw = input.value.trim();
+      if (raw === '') {
+        // Clear custom share — revert to auto
+        delete t.customDocShare;
+        delete t.customLabShare;
+      } else {
+        let val = parseFloat(raw) || 0;
+        t[field] = val;
+        // Auto-calculate the other share from rate
+        if (field === 'customDocShare') {
+          t.customLabShare = Math.max(0, (t.rate || 0) - val);
+        } else {
+          t.customDocShare = Math.max(0, (t.rate || 0) - val);
+        }
+      }
+    } else {
+      let val = isNum ? (parseFloat(input.value) || 0) : input.value.trim();
+      if (field === 'name' && !val) val = oldVal;
+      t[field] = val;
+    }
     let row = td.closest('tr');
     if (row) updateRLRow(row, rl, rlId, idx);
     saveRLTestFieldQuiet(rl, rlId);
@@ -224,7 +276,7 @@ function inlineEditField(rlId, idx, field, td) {
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.value = oldVal || ''; input.blur(); }
+    if (e.key === 'Escape') { input.value = (oldVal != null) ? oldVal : ''; input.blur(); }
   });
 }
 
@@ -236,10 +288,13 @@ function updateRLRow(row, rl, rlId, idx) {
   row.dataset.incomplete = isIncomplete ? '1' : '0';
   row.dataset.testname = t.name.toLowerCase();
   row.style.background = isIncomplete ? 'var(--warn-bg)' : '';
+  let hasCustom = t.customDocShare != null && t.customLabShare != null;
   let cells = row.querySelectorAll('td');
   cells[0].style.cssText = ec; cells[0].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'name',this)"); cells[0].textContent = t.name + warn;
   cells[1].style.cssText = ec; cells[1].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'type',this)"); cells[1].innerHTML = '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>';
   cells[2].style.cssText = ec; cells[2].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'rate',this)"); cells[2].textContent = '₹' + (t.rate || 0);
+  cells[3].style.cssText = ec + ';text-align:center;font-size:11px'; cells[3].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'customDocShare',this)"); cells[3].innerHTML = hasCustom ? '₹' + t.customDocShare : '<span style="color:#aaa">auto</span>';
+  cells[4].style.cssText = ec + ';text-align:center;font-size:11px'; cells[4].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'customLabShare',this)"); cells[4].innerHTML = hasCustom ? '₹' + t.customLabShare : '<span style="color:#aaa">auto</span>';
 }
 
 function saveRLTestFieldQuiet(rl, rlId) {

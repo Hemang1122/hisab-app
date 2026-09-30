@@ -237,9 +237,11 @@
 <h3 id="rlModalTitle">Nayi Rate List</h3>
 <label>Rate List Ka Naam</label>
 <input id="rlNameInput" placeholder="e.g. Rate List 1">
-<div style="margin:8px 0">
+<div style="margin:8px 0;display:flex;gap:6px;align-items:center">
 <button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
+<input id="rlModalSearch" placeholder="🔍 Search test..." oninput="filterRLModal()" style="flex:1;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px">
 </div>
+<div style="font-size:10px;color:#888;margin-bottom:4px">Dr/Lab share fields: leave empty for auto-split, ya custom amount daalo (rate se auto-calc hoga baaki)</div>
 <div id="rlTestRows" style="max-height:280px;overflow-y:auto"></div>
 <div style="margin-top:10px;display:flex;gap:8px">
 <button class="btn btn-primary" onclick="saveRateList()">Save</button>

@@ -194,7 +194,11 @@ function getDocPercent(docId) {
 }
 
 // Calculate labShare and docShare from rate and doctor's percentage
-function calcShares(rate, docPercent) {
+function calcShares(rate, docPercent, test) {
+  // If test has custom shares, use those instead of auto-calc
+  if (test && test.customDocShare != null && test.customLabShare != null) {
+    return { labShare: test.customLabShare, docShare: test.customDocShare };
+  }
   let docShare = Math.round(rate * docPercent / 100);
   return { labShare: rate - docShare, docShare };
 }
