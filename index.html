@@ -169,16 +169,26 @@
 <!-- TAB: Doctors & Staff -->
 <div id="tab-doctors" class="tab">
 <div class="section-header">
-<div style="display:flex;align-items:center;gap:8px"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#129658; Doctors &amp; Hospitals</h2></div>
-<button class="btn btn-primary no-print" onclick="openDocModal()">+ Naya Doctor</button>
+<div style="display:flex;align-items:center;gap:8px"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#129658; Doctors &amp; Staff</h2></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<!-- Doctors Column -->
+<div class="card" style="padding:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<b style="font-size:14px">&#129658; Doctors &amp; Hospitals</b>
+<button class="btn btn-sm btn-primary no-print" onclick="openDocModal()">+ Add</button>
 </div>
 <div id="doctorsList"></div>
-<hr>
-<div class="section-header">
-<h2>Collection Boys</h2>
-<button class="btn btn-primary no-print" onclick="openCollModal()">+ Naya Collection Boy</button>
+</div>
+<!-- Collection Boys Column -->
+<div class="card" style="padding:12px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<b style="font-size:14px">&#128666; Collection Boys</b>
+<button class="btn btn-sm btn-primary no-print" onclick="openCollModal()">+ Add</button>
 </div>
 <div id="collectorsList"></div>
+</div>
+</div>
 </div>
 
 <!-- TAB: Settings -->

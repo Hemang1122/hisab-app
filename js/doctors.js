@@ -33,14 +33,16 @@ function saveDoctor() {
 function renderDoctors() {
   let c = document.getElementById('doctorsList');
   if (!c) return;
-  if (!doctors.length) { c.innerHTML = '<div class="empty">Koi doctor add nahi hua.</div>'; return; }
-  c.innerHTML = doctors.map(d => {
+  if (!doctors.length) { c.innerHTML = '<div class="empty" style="padding:10px;font-size:12px">Koi doctor add nahi hua.</div>'; return; }
+  let rows = doctors.map((d, i) => {
     let pct = d.docPercent != null ? d.docPercent : 50;
-    let labPct = 100 - pct;
-    return '<div class="card flex-between"><div><b>' + d.name + '</b><br><small style="color:#777">Split: Doctor ' + pct + '% / Lab ' + labPct + '%</small></div><div>' +
-      '<button class="btn btn-sm btn-primary" onclick="openDocModal(\'' + d.id + '\')">Edit</button> ' +
-      '<button class="btn btn-sm btn-danger" onclick="deleteDoc(\'' + d.id + '\')">Delete</button></div></div>';
+    return '<tr><td style="text-align:center;font-size:11px;color:#999">' + (i + 1) + '</td><td style="font-size:13px">' + d.name + '</td>' +
+      '<td style="text-align:center;font-size:12px"><span style="background:#f0f4ff;padding:2px 8px;border-radius:10px">' + pct + '-' + (100 - pct) + '</span></td>' +
+      '<td style="text-align:right;white-space:nowrap"><button class="btn btn-sm btn-primary" onclick="openDocModal(\'' + d.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button> ' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteDoc(\'' + d.id + '\')" style="font-size:10px;padding:2px 6px">Del</button></td></tr>';
   }).join('');
+  c.innerHTML = '<table style="width:100%;font-size:13px"><thead><tr style="background:var(--n100)"><th style="padding:4px 6px;text-align:center;width:30px">#</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px;text-align:center;width:70px">Split</th><th style="padding:4px 6px;text-align:right;width:90px"></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div style="font-size:11px;color:#999;margin-top:6px">' + doctors.length + ' doctors/hospitals</div>';
 }
 
 function deleteDoc(id) {
@@ -67,9 +69,13 @@ function saveCollector() {
 function renderCollectors() {
   let c = document.getElementById('collectorsList');
   if (!c) return;
-  if (!collectors.length) { c.innerHTML = '<div class="empty">Koi collection boy nahi hai.</div>'; return; }
-  c.innerHTML = collectors.map(cl => '<div class="card flex-between"><b>' + cl.name + '</b>' +
-    '<button class="btn btn-sm btn-danger" onclick="deleteColl(\'' + cl.id + '\')">Delete</button></div>').join('');
+  if (!collectors.length) { c.innerHTML = '<div class="empty" style="padding:10px;font-size:12px">Koi collection boy nahi hai.</div>'; return; }
+  let rows = collectors.map((cl, i) => {
+    return '<tr><td style="text-align:center;font-size:11px;color:#999">' + (i + 1) + '</td><td style="font-size:13px">' + cl.name + '</td>' +
+      '<td style="text-align:right"><button class="btn btn-sm btn-danger" onclick="deleteColl(\'' + cl.id + '\')" style="font-size:10px;padding:2px 6px">Del</button></td></tr>';
+  }).join('');
+  c.innerHTML = '<table style="width:100%;font-size:13px"><thead><tr style="background:var(--n100)"><th style="padding:4px 6px;text-align:center;width:30px">#</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px;text-align:right;width:50px"></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div style="font-size:11px;color:#999;margin-top:6px">' + collectors.length + ' collection boys</div>';
 }
 
 function deleteColl(id) {
