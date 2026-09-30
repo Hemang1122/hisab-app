@@ -108,11 +108,27 @@ function testRowKeyHandler(event, row) {
     let s = document.getElementById('testSearch');
     if (s) { s.value = ''; filterTests(); s.focus(); }
   } else if (event.key === 'Tab') {
-    // Tab from focused test row = jump to discount field
     event.preventDefault();
     row.classList.remove('test-row-focused');
-    let discField = document.getElementById('eDisc');
-    if (discField) discField.focus();
+    // Find next visible test row; if none, go to discount
+    let allRows = Array.from(document.querySelectorAll('#testCheckboxes .test-row'));
+    let idx = allRows.indexOf(row);
+    let next = null;
+    let dir = event.shiftKey ? -1 : 1;
+    for (let i = idx + dir; i >= 0 && i < allRows.length; i += dir) {
+      if (allRows[i].style.display !== 'none' && !allRows[i].style.display.includes('none')) {
+        next = allRows[i]; break;
+      }
+    }
+    if (next) {
+      next.focus();
+      next.classList.add('test-row-focused');
+    } else if (!event.shiftKey) {
+      document.getElementById('eDisc').focus();
+    } else {
+      let s = document.getElementById('testSearch');
+      if (s) s.focus();
+    }
   }
 }
 
