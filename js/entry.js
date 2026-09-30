@@ -58,12 +58,15 @@ function loadTestCheckboxes(rl, docPercent) {
   let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter/Tab to select)" oninput="filterTests()" onkeydown="testSearchKeyHandler(event)" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
   let testsHtml = rl.tests.map((t, i) => {
     let incomplete = !t.rate ? ' test-incomplete' : '';
+    // Rate span is clickable — opens quick-edit modal (highlighted when rate=0)
+    let rateClickAttr = ' onclick="event.stopPropagation();openQuickTestEdit(' + i + ')" title="Click to edit rate/split" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px"';
+    let rateStyle = !t.rate ? ';color:var(--due);font-weight:700' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '" tabindex="0" onkeydown="testRowKeyHandler(event,this)">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
     '<input type="checkbox" class="test-cb" data-idx="' + i + '" tabindex="-1" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
-    '<span class="trate">&#8377;' + (t.rate || 0) + '</span></div>';
+    '<span class="trate"' + rateClickAttr + ' style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px' + rateStyle + '">&#8377;' + (t.rate || 0) + (!t.rate ? ' ✏️' : '') + '</span></div>';
   }).join('');
   container.innerHTML = searchHtml + testsHtml;
   // Store current docPercent for use in getSelectedTests
@@ -162,6 +165,52 @@ function applySelfRL() {
   let rl = getMasterRL();
   if (!rl) return alert('Rate list nahi mili!');
   loadTestCheckboxes(rl, 50);
+}
+
+// Quick-edit a test's rate/type/split from the entry page
+let quickEditTestIdx = null;
+function openQuickTestEdit(idx) {
+  let rl = getMasterRL();
+  if (!rl || !rl.tests[idx]) return;
+  let t = rl.tests[idx];
+  quickEditTestIdx = idx;
+  document.getElementById('quickTestName').textContent = t.name;
+  document.getElementById('qtRate').value = t.rate || '';
+  document.getElementById('qtType').value = t.type || 'normal';
+  document.getElementById('qtDocShare').value = t.customDocShare != null ? t.customDocShare : '';
+  document.getElementById('qtLabShare').value = t.customLabShare != null ? t.customLabShare : '';
+  document.getElementById('quickTestModal').classList.add('show');
+  setTimeout(() => document.getElementById('qtRate').focus(), 50);
+}
+
+function saveQuickTestEdit() {
+  if (quickEditTestIdx == null) return;
+  let rl = getMasterRL();
+  if (!rl || !rl.tests[quickEditTestIdx]) return;
+  let t = rl.tests[quickEditTestIdx];
+  let newRate = parseFloat(document.getElementById('qtRate').value) || 0;
+  let newType = document.getElementById('qtType').value;
+  let cdsRaw = document.getElementById('qtDocShare').value.trim();
+  let clsRaw = document.getElementById('qtLabShare').value.trim();
+  t.rate = newRate;
+  t.type = newType;
+  if (cdsRaw !== '' || clsRaw !== '') {
+    let cds = cdsRaw !== '' ? (parseFloat(cdsRaw) || 0) : null;
+    let cls = clsRaw !== '' ? (parseFloat(clsRaw) || 0) : null;
+    if (cds != null && cls == null) cls = Math.max(0, newRate - cds);
+    if (cls != null && cds == null) cds = Math.max(0, newRate - cls);
+    t.customDocShare = cds;
+    t.customLabShare = cls;
+  } else {
+    delete t.customDocShare;
+    delete t.customLabShare;
+  }
+  saveAll();
+  if (dbReady) sbSave('rate_lists', rl.id, rl);
+  closeModal('quickTestModal');
+  quickEditTestIdx = null;
+  reloadEntryTests();
+  if (typeof renderRateLists === 'function') renderRateLists();
 }
 
 function getSelectedTests() {
