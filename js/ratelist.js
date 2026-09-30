@@ -23,7 +23,8 @@ function openRLModal(id) {
 
 function addRLTest(data) {
   let div = document.createElement('div');
-  div.style.cssText = 'border:1px solid #eee;border-radius:6px;padding:8px;margin-bottom:6px;position:relative';
+  let isNew = !data;
+  div.style.cssText = 'border:1px solid ' + (isNew ? 'var(--accent)' : '#eee') + ';border-radius:6px;padding:8px;margin-bottom:6px;position:relative' + (isNew ? ';background:#fff8ee' : '');
   div.dataset.testname = data ? data.name.toLowerCase() : '';
   let n = data ? data.name : '', r = data ? data.rate : '', tp = data ? data.type : 'normal';
   let cds = data && data.customDocShare != null ? data.customDocShare : '';
@@ -36,7 +37,18 @@ function addRLTest(data) {
     '<input type="number" placeholder="Dr ₹" value="' + cds + '" class="rlt-doc-share" style="width:22%" title="Custom Doctor Share (leave empty for auto)">' +
     '<input type="number" placeholder="Lab ₹" value="' + cls + '" class="rlt-lab-share" style="width:22%" title="Custom Lab Share (leave empty for auto)">' +
     '</div>';
-  document.getElementById('rlTestRows').appendChild(div);
+  let container = document.getElementById('rlTestRows');
+  if (isNew) {
+    // Prepend so it's immediately visible at top
+    container.insertBefore(div, container.firstChild);
+    container.scrollTop = 0;
+    // Focus the name input for immediate typing
+    setTimeout(() => { let inp = div.querySelector('.rlt-name'); if (inp) inp.focus(); }, 50);
+    // Fade the highlight after a moment
+    setTimeout(() => { div.style.borderColor = '#eee'; div.style.background = ''; }, 1800);
+  } else {
+    container.appendChild(div);
+  }
 }
 
 function filterRLModal() {

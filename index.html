@@ -70,30 +70,39 @@
 <div class="total-bar" id="entryTotals" style="display:none">
 <span>Subtotal: &#8377;<b id="eSubtotal">0</b></span>
 <span>Discount: &#8377;<b id="eDiscAmt">0</b></span>
+<span id="eExtraDisplay" style="display:none">Extra: &#8377;<b id="eExtraAmt">0</b></span>
 <span>Total: &#8377;<b id="eTotal">0</b></span>
 </div>
 <hr>
 <div class="row">
 <div><label>Discount</label>
 <div class="row">
-<input id="eDisc" type="number" value="0" oninput="calcEntry()">
+<input id="eDisc" type="number" placeholder="0" oninput="calcEntry()">
 <select id="eDiscType" onchange="calcEntry()" style="max-width:65px"><option value="rs">&#8377;</option><option value="pc">%</option></select>
 </div></div>
+<div><label>Extra Charge</label>
+<div class="row">
+<input id="eExtra" type="number" placeholder="0" oninput="calcEntry()" title="Extra amount taken from patient">
+<input id="eExtraReason" type="text" placeholder="Reason (optional)" style="flex:2">
+</div></div>
+</div>
+<div class="row">
 <div><label>Payment</label>
 <div class="pay-section">
 <select id="ePayStatus" onchange="togglePayFields()">
 <option value="paid">Paid</option>
 <option value="partial">Balance</option>
 </select>
-<input id="ePaid" type="number" value="0" placeholder="Paid &#8377;" oninput="calcEntry()" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" style="display:none">
+<input id="ePaid" type="number" placeholder="Paid &#8377;" oninput="calcEntry()" style="display:none">
 <span id="balDisplay"></span>
 </div></div>
-</div>
-<div class="row">
 <div><label>Payment Mode</label>
 <select id="ePayMode"><option>Cash</option><option>GPay</option><option>PhonePe</option><option>UPI</option><option>Card</option><option>Online</option><option>Other</option></select></div>
+</div>
+<div class="row">
 <div><label>Collection Boy</label>
 <select id="eCollector"><option value="">-- None --</option></select></div>
+<div></div>
 </div>
 <div style="margin-top:10px;text-align:right">
 <button class="btn btn-primary" onclick="saveEntry()">&#128190; Save Entry</button>
@@ -233,12 +242,13 @@
 
 <!-- Rate List Modal -->
 <div class="modal-overlay" id="rlModal">
-<div class="modal">
-<h3 id="rlModalTitle">Nayi Rate List</h3>
+<div class="modal" style="position:relative">
+<button onclick="closeModal('rlModal')" title="Close" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:22px;color:#666;cursor:pointer;padding:0;line-height:1;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center" onmouseover="this.style.background='#f0f0f0';this.style.color='#c44536'" onmouseout="this.style.background='none';this.style.color='#666'">&times;</button>
+<h3 id="rlModalTitle" style="margin-right:30px">Nayi Rate List</h3>
 <label>Rate List Ka Naam</label>
 <input id="rlNameInput" placeholder="e.g. Rate List 1">
-<div style="margin:8px 0;display:flex;gap:6px;align-items:center">
-<button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
+<div style="margin:8px 0;display:flex;gap:6px;align-items:center;position:sticky;top:0;background:white;z-index:2;padding:4px 0;border-bottom:1px solid #eee">
+<button class="btn btn-sm btn-primary" onclick="addRLTest()" style="white-space:nowrap">+ Add Test</button>
 <input id="rlModalSearch" placeholder="🔍 Search test..." oninput="filterRLModal()" style="flex:1;padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:12px">
 </div>
 <div style="font-size:10px;color:#888;margin-bottom:4px">Dr/Lab share fields: leave empty for auto-split, ya custom amount daalo (rate se auto-calc hoga baaki)</div>

@@ -14,6 +14,8 @@ function generateHisab() {
   let rows = filtered.map((e, i) => {
     let docS = 0, labS = 0;
     e.tests.forEach(t => { docS += (t.docShare || 0); labS += (t.labShare || 0); });
+    // Extra charge goes to lab share
+    labS += (e.extra || 0);
     grandTotal += e.total; grandDoc += docS; grandLab += labS; grandPaid += e.paid; grandBal += e.balance; grandDiscount += (e.discount || 0);
     let tnames = e.tests.map(t => t.name).join(', ');
     let statusClass = e.balance > 0 ? 'inv-status-due' : 'inv-status-paid';

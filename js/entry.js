@@ -178,9 +178,16 @@ function calcEntry() {
   let disc = parseFloat(document.getElementById('eDisc').value) || 0;
   let discType = document.getElementById('eDiscType').value;
   let discAmt = discType === 'pc' ? Math.round(subtotal * disc / 100) : disc;
-  let total = Math.max(0, subtotal - discAmt);
+  let extra = parseFloat((document.getElementById('eExtra') || {}).value) || 0;
+  let total = Math.max(0, subtotal - discAmt + extra);
   document.getElementById('eSubtotal').textContent = subtotal;
   document.getElementById('eDiscAmt').textContent = discAmt;
+  let extraDisplay = document.getElementById('eExtraDisplay');
+  let extraAmtEl = document.getElementById('eExtraAmt');
+  if (extraDisplay && extraAmtEl) {
+    if (extra > 0) { extraDisplay.style.display = ''; extraAmtEl.textContent = extra; }
+    else { extraDisplay.style.display = 'none'; }
+  }
   document.getElementById('eTotal').textContent = total;
   document.getElementById('entryTotals').style.display = tests.length ? 'flex' : 'none';
   // Selected tests summary
@@ -220,7 +227,9 @@ function saveEntry() {
   let disc = parseFloat(document.getElementById('eDisc').value) || 0;
   let discType = document.getElementById('eDiscType').value;
   let discAmt = discType === 'pc' ? Math.round(subtotal * disc / 100) : disc;
-  let total = Math.max(0, subtotal - discAmt);
+  let extra = parseFloat((document.getElementById('eExtra') || {}).value) || 0;
+  let extraReason = ((document.getElementById('eExtraReason') || {}).value || '').trim();
+  let total = Math.max(0, subtotal - discAmt + extra);
   let payInfo = getPaymentInfo();
   let docName = isSelf ? 'Self' : doctors.find(d => d.id === docVal).name;
   let entry = {
@@ -228,7 +237,9 @@ function saveEntry() {
     date: getDateFromPicker('e'),
     doctorId: docVal, doctorName: docName, name,
     age: '', gender: '',
-    tests, subtotal, discount: discAmt, total,
+    tests, subtotal, discount: discAmt,
+    extra: extra, extraReason: extraReason,
+    total,
     paid: payInfo.paid, balance: payInfo.balance,
     paymentMode: document.getElementById('ePayMode').value,
     collectorId: document.getElementById('eCollector').value,
@@ -239,8 +250,10 @@ function saveEntry() {
   saveEntry_db(entry);
   // Reset form
   document.getElementById('eName').value = '';
-  document.getElementById('eDisc').value = '0';
-  document.getElementById('ePaid').value = '0';
+  document.getElementById('eDisc').value = '';
+  document.getElementById('eExtra').value = '';
+  document.getElementById('eExtraReason').value = '';
+  document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
   togglePayFields();
   document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
@@ -273,7 +286,7 @@ function refreshSidebar() {
 
 // ========== KEYBOARD FLOW ==========
 function initKeyboardFlow() {
-  const FIELD_ORDER = ['eDoctor', 'eName', 'eDisc', 'eDiscType', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
+  const FIELD_ORDER = ['eDoctor', 'eName', 'eDisc', 'eDiscType', 'eExtra', 'eExtraReason', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
   function nextField(currentId) {
     let idx = FIELD_ORDER.indexOf(currentId);
     if (idx < 0) return;

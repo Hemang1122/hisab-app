@@ -19,6 +19,8 @@ function showRevenue() {
   filtered.forEach(e => {
     let labS = 0, docS = 0;
     e.tests.forEach(t => { labS += (t.labShare || 0); docS += (t.docShare || 0); });
+    // Extra amount goes entirely to lab share
+    labS += (e.extra || 0);
     totalRevenue += e.total; totalLabShare += labS; totalDocShare += docS;
     totalDisc += e.discount; totalPaid += e.paid; totalBal += e.balance;
     totalTests += e.tests.length;
