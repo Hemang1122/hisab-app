@@ -393,6 +393,81 @@ function getDocPercent(docId) {
 }
 
 // Calculate labShare and docShare from rate and doctor's percentage
+// Sync ALL entries to current master rate list — recomputes rate/shares/totals
+// for any test in any entry that no longer matches the master. Returns count updated.
+function syncEntriesToRateList() {
+  let rl = getMasterRL();
+  if (!rl) return 0;
+  let nameMap = {};
+  rl.tests.forEach(t => { nameMap[t.name.toLowerCase()] = t; });
+  let touchedIds = [];
+  entries.forEach(e => {
+    let entryChanged = false;
+    let docPct = getDocPercent(e.doctorId);
+    e.tests.forEach(t => {
+      let master = nameMap[(t.name || '').toLowerCase()];
+      if (master) {
+        let newShares = calcShares(master.rate, docPct, master);
+        if (t.rate !== master.rate || t.type !== master.type ||
+            t.labShare !== newShares.labShare || t.docShare !== newShares.docShare) {
+          t.rate = master.rate;
+          t.type = master.type;
+          t.labShare = newShares.labShare;
+          t.docShare = newShares.docShare;
+          entryChanged = true;
+        }
+      }
+    });
+    if (entryChanged) {
+      let oldTotal = e.total || 0;
+      e.subtotal = e.tests.reduce((s, t) => s + (t.rate || 0), 0);
+      let discAmt = e.discount || 0;
+      let extra = e.extra || 0;
+      e.total = Math.max(0, e.subtotal - discAmt + extra);
+      if (e.hospitalPaid) {
+        e.paid = 0;
+        e.balance = e.total;
+      } else if (oldTotal > 0 && (e.paid || 0) >= oldTotal) {
+        // Was fully paid — keep fully paid at new total
+        e.paid = e.total;
+        e.balance = 0;
+      } else {
+        e.balance = Math.max(0, e.total - (e.paid || 0));
+      }
+      e.syncedAt = new Date().toISOString();
+      touchedIds.push(e.id);
+    }
+  });
+  if (touchedIds.length) {
+    saveLocal();
+    if (dbReady && typeof sbSave === 'function') {
+      touchedIds.forEach(id => {
+        let e = entries.find(x => x.id === id);
+        if (e) sbSave('entries', e.id, e);
+      });
+    }
+  }
+  return touchedIds.length;
+}
+
+// Show a small toast at the bottom-right
+function toast(msg, type) {
+  let t = document.getElementById('_toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = '_toast';
+    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1a3a2a;color:white;padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:9999;opacity:0;transition:opacity .3s;max-width:340px';
+    document.body.appendChild(t);
+  }
+  if (type === 'warn') t.style.background = '#c8843c';
+  else if (type === 'error') t.style.background = '#c44536';
+  else t.style.background = '#1a3a2a';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 3500);
+}
+
 function calcShares(rate, docPercent, test) {
   // If test has custom shares, use those instead of auto-calc
   if (test && test.customDocShare != null && test.customLabShare != null) {

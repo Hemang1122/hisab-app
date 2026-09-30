@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=32">
+<link rel="stylesheet" href="css/styles.css?v=33">
 </head>
 <body>
 
@@ -232,6 +232,11 @@
 <p style="font-size:12px;color:var(--gray-500)">Auto-connected to Supabase cloud database. Data syncs across all browsers.</p>
 </div>
 <div class="card">
+<h3 style="font-size:14px">🔄 Recalculate Past Entries</h3>
+<p style="font-size:12px;color:var(--gray-500);margin:4px 0 8px">Apply current rate list prices to ALL past entries. Useful if you fixed a test price after already saving entries with the old rate.</p>
+<button class="btn btn-primary btn-sm" onclick="manualSyncEntries()">🔄 Sync All Entries to Current Rates</button>
+</div>
+<div class="card">
 <h3 style="font-size:14px">Revenue Page Password</h3>
 <label>Naya Password Set Karo</label>
 <input id="setRevPw" type="password" placeholder="Password enter karo">
@@ -344,15 +349,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=32"></script>
-<script src="js/ui.js?v=32"></script>
-<script src="js/ratelist.js?v=32"></script>
-<script src="js/doctors.js?v=32"></script>
-<script src="js/entry.js?v=32"></script>
-<script src="js/register.js?v=32"></script>
-<script src="js/hisab.js?v=32"></script>
-<script src="js/revenue.js?v=32"></script>
-<script src="js/backup.js?v=32"></script>
+<script src="js/db.js?v=33"></script>
+<script src="js/ui.js?v=33"></script>
+<script src="js/ratelist.js?v=33"></script>
+<script src="js/doctors.js?v=33"></script>
+<script src="js/entry.js?v=33"></script>
+<script src="js/register.js?v=33"></script>
+<script src="js/hisab.js?v=33"></script>
+<script src="js/revenue.js?v=33"></script>
+<script src="js/backup.js?v=33"></script>
 
 <!-- Init -->
 <script>

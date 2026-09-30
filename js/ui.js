@@ -186,6 +186,17 @@ function docComboKey(e) {
   }
 }
 
+function manualSyncEntries() {
+  let count = syncEntriesToRateList();
+  if (count === 0) {
+    toast('✓ All entries already match current rates', 'info');
+  } else {
+    toast('✅ ' + count + ' ' + (count === 1 ? 'entry' : 'entries') + ' updated to current rates');
+    if (typeof renderRegister === 'function') renderRegister();
+    if (typeof refreshSidebar === 'function') refreshSidebar();
+  }
+}
+
 function populateDropdowns() {
   let selfOpt = '<option value="__self__">Self (Walk-in)</option>';
   let docOpts = '<option value="">-- Select --</option>' + selfOpt + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');

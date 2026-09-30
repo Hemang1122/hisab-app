@@ -245,13 +245,18 @@ function saveQuickTestEdit() {
   let editedIdx = quickEditTestIdx;
   closeModal('quickTestModal');
   quickEditTestIdx = null;
+
+  // Propagate the price change to ALL existing entries containing this test
+  let updated = syncEntriesToRateList();
+  if (updated > 0) toast('✅ ' + updated + ' past ' + (updated === 1 ? 'entry' : 'entries') + ' updated with new rate');
+
   reloadEntryTests();
-  // Auto-tick the edited test after reload (so user sees it in the entry)
   setTimeout(() => {
     let cb = document.querySelector('.test-cb[data-idx="' + editedIdx + '"]');
     if (cb) { cb.checked = true; calcEntry(); }
   }, 30);
   if (typeof renderRateLists === 'function') renderRateLists();
+  if (typeof refreshSidebar === 'function') refreshSidebar();
 }
 
 function removeSelectedTest(idx) {

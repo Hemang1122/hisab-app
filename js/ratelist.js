@@ -93,6 +93,10 @@ function saveRateList() {
   if (dbReady) sbSave('rate_lists', rlId, rateLists.find(r => r.id === rlId));
   closeModal('rlModal'); renderRateLists(); populateDropdowns();
   if (typeof reloadEntryTests === 'function') reloadEntryTests();
+  // Sync all past entries with new rates
+  let updated = syncEntriesToRateList();
+  if (updated > 0) toast('✅ ' + updated + ' past ' + (updated === 1 ? 'entry' : 'entries') + ' updated with new rates');
+  if (typeof refreshSidebar === 'function') refreshSidebar();
 }
 
 function renderRateLists() {
@@ -321,6 +325,10 @@ function saveRLTestFieldQuiet(rl, rlId) {
   saveAll();
   if (dbReady) sbSave('rate_lists', rlId, rl);
   if (typeof reloadEntryTests === 'function') reloadEntryTests();
+  // Propagate to entries
+  let updated = syncEntriesToRateList();
+  if (updated > 0 && typeof toast === 'function') toast('✅ ' + updated + ' past ' + (updated === 1 ? 'entry' : 'entries') + ' updated');
+  if (typeof refreshSidebar === 'function') refreshSidebar();
 }
 
 function saveRLTestField(rl, rlId) {
