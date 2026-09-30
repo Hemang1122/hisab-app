@@ -101,7 +101,7 @@ function renderRateLists() {
 
     // Search + filter toolbar inside the test wrap
     let toolbar = '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">' +
-      '<input placeholder="🔍 Test search karo... (Enter to select)" oninput="searchRLTests(\'' + rl.id + '\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstRLTest(\'' + rl.id + '\',this)}" style="flex:1;min-width:120px;padding:5px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12px">' +
+      '<input placeholder="🔍 Test search karo... (Enter to select)" oninput="searchRLTests(\'' + rl.id + '\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstRLTest(\'' + rl.id + '\',this)}" style="flex:1;min-width:120px;padding:8px 12px;border:2px solid var(--accent);border-radius:var(--radius);font-size:13px;background:var(--accent-light,#e3f2fd);font-weight:500">' +
       (incompleteCount ? '<button class="btn btn-sm" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" style="font-size:11px;padding:3px 8px;background:var(--warn);color:#333;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap" data-filtered="0">⚠️ ' + incompleteCount + ' Incomplete</button>' : '') +
       '<button class="btn btn-sm btn-secondary" onclick="printRateList(\'' + rl.id + '\')" style="font-size:11px;padding:3px 8px;white-space:nowrap">🖨️ Print</button>' +
       '</div>';
@@ -227,9 +227,12 @@ function inlineEditField(rlId, idx, field, td) {
   let oldVal = t[field];
 
   if (field === 'type') {
-    // Toggle type on click
+    // Toggle type on click — update in place without re-render
     t.type = t.type === 'normal' ? 'special' : 'normal';
-    saveRLTestField(rl, rlId);
+    let span = td.querySelector('span') || td;
+    if (t.type === 'special') { span.className = 'tag-special'; span.textContent = 'Special'; }
+    else { span.className = 'tag-normal'; span.textContent = 'Normal'; }
+    saveRLTestFieldQuiet(rl, rlId);
     return;
   }
 
@@ -254,7 +257,10 @@ function inlineEditField(rlId, idx, field, td) {
       t.docShare = Math.round(val * docPct);
       t.labShare = val - t.docShare;
     }
-    saveRLTestField(rl, rlId);
+    // Update the row in place instead of full re-render
+    let row = td.closest('tr');
+    if (row) updateRLRow(row, rl, rlId, idx);
+    saveRLTestFieldQuiet(rl, rlId);
   }
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', function(e) {
@@ -263,9 +269,32 @@ function inlineEditField(rlId, idx, field, td) {
   });
 }
 
-function saveRLTestField(rl, rlId) {
+// Update a single row in place (no full re-render)
+function updateRLRow(row, rl, rlId, idx) {
+  let t = rl.tests[idx];
+  let isIncomplete = (!t.rate || !t.labShare || !t.docShare);
+  let warn = isIncomplete ? ' ⚠️' : '';
+  let ec = 'cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px';
+  row.dataset.incomplete = isIncomplete ? '1' : '0';
+  row.dataset.testname = t.name.toLowerCase();
+  row.style.background = isIncomplete ? 'var(--warn-bg)' : '';
+  let cells = row.querySelectorAll('td');
+  cells[0].style.cssText = ec; cells[0].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'name',this)"); cells[0].textContent = t.name + warn;
+  cells[1].style.cssText = ec; cells[1].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'type',this)"); cells[1].innerHTML = '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>';
+  cells[2].style.cssText = ec; cells[2].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'rate',this)"); cells[2].textContent = '₹' + (t.rate || 0);
+  cells[3].style.cssText = ec; cells[3].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'labShare',this)"); cells[3].textContent = '₹' + (t.labShare || 0);
+  cells[4].style.cssText = ec; cells[4].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'docShare',this)"); cells[4].textContent = '₹' + (t.docShare || 0);
+}
+
+// Save without re-rendering (keeps table open)
+function saveRLTestFieldQuiet(rl, rlId) {
   saveAll();
   if (dbReady) sbSave('rate_lists', rlId, rl);
+}
+
+// Full save + re-render (used by modal save etc.)
+function saveRLTestField(rl, rlId) {
+  saveRLTestFieldQuiet(rl, rlId);
   renderRateLists();
 }
 
