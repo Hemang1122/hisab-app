@@ -92,6 +92,7 @@ function saveRateList() {
   saveAll();
   if (dbReady) sbSave('rate_lists', rlId, rateLists.find(r => r.id === rlId));
   closeModal('rlModal'); renderRateLists(); populateDropdowns();
+  if (typeof reloadEntryTests === 'function') reloadEntryTests();
 }
 
 function renderRateLists() {
@@ -319,6 +320,7 @@ function updateRLRow(row, rl, rlId, idx) {
 function saveRLTestFieldQuiet(rl, rlId) {
   saveAll();
   if (dbReady) sbSave('rate_lists', rlId, rl);
+  if (typeof reloadEntryTests === 'function') reloadEntryTests();
 }
 
 function saveRLTestField(rl, rlId) {

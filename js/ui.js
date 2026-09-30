@@ -114,8 +114,21 @@ function populateDropdowns() {
   let regDoc = document.getElementById('regDocFilter');
   let eColl = document.getElementById('eCollector');
 
+  // Preserve current selections across the rebuild
+  let prevEDoc = eDoc ? eDoc.value : '';
+  let prevHDoc = hDoc ? hDoc.value : '';
+  let prevRegDoc = regDoc ? regDoc.value : '';
+  let prevEColl = eColl ? eColl.value : '';
+
   if (eDoc) eDoc.innerHTML = docOpts;
   if (hDoc) hDoc.innerHTML = '<option value="">-- Select --</option>' + selfOpt + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   if (regDoc) regDoc.innerHTML = '<option value="">Sabhi Doctors</option>' + '<option value="__self__">Self (Walk-in)</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   if (eColl) eColl.innerHTML = '<option value="">-- None --</option>' + collectors.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
+
+  // Restore selections (only if the value still exists as an option)
+  function restore(sel, val) { if (sel && val && Array.from(sel.options).some(o => o.value === val)) sel.value = val; }
+  restore(eDoc, prevEDoc);
+  restore(hDoc, prevHDoc);
+  restore(regDoc, prevRegDoc);
+  restore(eColl, prevEColl);
 }
