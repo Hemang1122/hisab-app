@@ -40,7 +40,6 @@ function addRLTest(data) {
 
 function autoSplit(el) {
   let row = el.closest('div'), rate = parseFloat(el.value) || 0;
-  // Check if editing the 60-40 rate list
   let rlName = document.getElementById('rlNameInput').value.toLowerCase();
   let docPct = (rlName.includes('60-40') || rlName.includes('60 40')) ? 0.6 : 0.5;
   let docShare = Math.round(rate * docPct);
@@ -85,17 +84,26 @@ function renderRateLists() {
     let docStr = assignedDocs.length ? assignedDocs.join(', ') : '<i style="color:#999">Koi doctor assign nahi</i>';
     let testCount = rl.tests.length;
     let incompleteCount = rl.tests.filter(t => !t.rate || !t.labShare || !t.docShare).length;
-    let countBadge = testCount + ' tests' + (incompleteCount ? ' <span style="color:var(--warn)">(' + incompleteCount + ' incomplete)</span>' : '');
+    let countBadge = testCount + ' tests' + (incompleteCount ? ' <span style="color:var(--warn);cursor:pointer" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" title="Click to show only incomplete">(' + incompleteCount + ' incomplete)</span>' : '');
     let rows = testCount ? rl.tests.map((t, idx) => {
-      let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' style="background:var(--warn-bg)"' : '';
-      let warn = (!t.rate || !t.labShare || !t.docShare) ? ' ⚠️' : '';
-      return '<tr' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td><td><button class="btn btn-sm btn-secondary" onclick="editSingleTest(\'' + rl.id + '\',' + idx + ')" style="padding:2px 8px;font-size:11px">✏️</button></td></tr>';
+      let isIncomplete = (!t.rate || !t.labShare || !t.docShare);
+      let incomplete = isIncomplete ? ' style="background:var(--warn-bg)"' : '';
+      let warn = isIncomplete ? ' ⚠️' : '';
+      return '<tr class="rl-test-row" data-rlid="' + rl.id + '" data-testname="' + t.name.toLowerCase() + '" data-incomplete="' + (isIncomplete ? '1' : '0') + '"' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td><td><button class="btn btn-sm btn-secondary" onclick="editSingleTest(\'' + rl.id + '\',' + idx + ')" style="padding:2px 8px;font-size:11px">✏️</button></td></tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
+
+    // Search + filter toolbar inside the test wrap
+    let toolbar = '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">' +
+      '<input placeholder="🔍 Test search karo..." oninput="searchRLTests(\'' + rl.id + '\',this.value)" style="flex:1;min-width:120px;padding:5px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12px">' +
+      (incompleteCount ? '<button class="btn btn-sm" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" style="font-size:11px;padding:3px 8px;background:var(--warn);color:#333;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap" data-filtered="0">⚠️ ' + incompleteCount + ' Incomplete</button>' : '') +
+      '<button class="btn btn-sm btn-secondary" onclick="printRateList(\'' + rl.id + '\')" style="font-size:11px;padding:3px 8px;white-space:nowrap">🖨️ Print</button>' +
+      '</div>';
+
     return '<div class="card"><div class="flex-between"><div><b>' + rl.name + '</b><br><small>Doctors: ' + docStr + '</small></div><div>' +
       '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit All</button> ' +
       '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')">Delete</button></div></div>' +
       '<div style="margin-top:8px"><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
-      '<div class="rl-tests-wrap" style="display:none;margin-top:6px"><table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
+      '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
   }).join('');
 }
 
@@ -108,6 +116,74 @@ function toggleRLTests(btn) {
     wrap.style.display = 'none';
     btn.textContent = btn.textContent.replace('▼ Hide', '▶ Show');
   }
+}
+
+// Search tests within a rate list
+function searchRLTests(rlId, query) {
+  let q = (query || '').toLowerCase();
+  document.querySelectorAll('.rl-test-row[data-rlid="' + rlId + '"]').forEach(row => {
+    row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
+  });
+}
+
+// Toggle showing only incomplete tests
+function filterRLIncomplete(rlId, btn) {
+  let isFiltered = btn.dataset.filtered === '1';
+  let rows = document.querySelectorAll('.rl-test-row[data-rlid="' + rlId + '"]');
+  if (isFiltered) {
+    // Show all
+    rows.forEach(row => row.style.display = '');
+    btn.dataset.filtered = '0';
+    if (btn.tagName === 'BUTTON') btn.style.background = 'var(--warn)';
+  } else {
+    // Show only incomplete
+    rows.forEach(row => {
+      row.style.display = row.dataset.incomplete === '1' ? '' : 'none';
+    });
+    btn.dataset.filtered = '1';
+    if (btn.tagName === 'BUTTON') btn.style.background = '#ff9800';
+    // Auto-expand the test table if collapsed
+    let wrap = btn.closest('.rl-tests-wrap') || btn.closest('.card').querySelector('.rl-tests-wrap');
+    if (wrap && wrap.style.display === 'none') {
+      wrap.style.display = 'block';
+      let toggleBtn = wrap.previousElementSibling;
+      if (toggleBtn) toggleBtn.textContent = toggleBtn.textContent.replace('▶ Show', '▼ Hide');
+    }
+  }
+}
+
+// Print rate list as PDF-friendly page
+function printRateList(rlId) {
+  let rl = rateLists.find(r => r.id === rlId);
+  if (!rl) return;
+  let assignedDocs = doctors.filter(d => d.rateListId === rl.id).map(d => d.name);
+  let docStr = assignedDocs.length ? assignedDocs.join(', ') : 'None';
+
+  let rows = rl.tests.map((t, i) => {
+    let warn = (!t.rate || !t.labShare || !t.docShare) ? ' ⚠️' : '';
+    return '<tr' + (warn ? ' style="background:#fff8e1"' : '') + '><td style="text-align:center">' + (i + 1) + '</td><td>' + t.name + warn + '</td><td><span>' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td style="text-align:right">₹' + (t.rate || 0) + '</td><td style="text-align:right">₹' + (t.labShare || 0) + '</td><td style="text-align:right">₹' + (t.docShare || 0) + '</td></tr>';
+  }).join('');
+
+  let totalRate = rl.tests.reduce((s, t) => s + (t.rate || 0), 0);
+  let incompleteCount = rl.tests.filter(t => !t.rate || !t.labShare || !t.docShare).length;
+
+  let html = '<div style="font-family:sans-serif;max-width:800px;margin:auto;padding:20px">' +
+    '<h2 style="text-align:center;margin-bottom:2px">Shree Balaji Clinical Laboratory</h2>' +
+    '<p style="text-align:center;color:#666;margin-top:0">Rate List</p>' +
+    '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border-radius:6px;margin-bottom:12px;font-size:13px">' +
+    '<div><strong>Name:</strong> ' + rl.name + '</div>' +
+    '<div><strong>Doctors:</strong> ' + docStr + '</div>' +
+    '<div><strong>Tests:</strong> ' + rl.tests.length + (incompleteCount ? ' (' + incompleteCount + ' incomplete)' : '') + '</div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="background:#333;color:white"><th style="padding:6px;text-align:center">#</th><th style="padding:6px">Test</th><th style="padding:6px">Type</th><th style="padding:6px;text-align:right">Rate</th><th style="padding:6px;text-align:right">Lab Share</th><th style="padding:6px;text-align:right">Doctor Share</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody>' +
+    '<tfoot><tr style="font-weight:bold;border-top:2px solid #333"><td colspan="3" style="padding:6px">Total</td><td style="padding:6px;text-align:right">₹' + totalRate + '</td><td colspan="2"></td></tr></tfoot>' +
+    '</table></div>';
+
+  document.getElementById('printArea').innerHTML = html;
+  document.getElementById('printArea').style.display = 'block';
+  setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
 }
 
 function editSingleTest(rlId, idx) {
