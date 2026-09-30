@@ -218,7 +218,8 @@ function saveLocal() {
 // ========== SUPABASE ==========
 let sb = null;
 let dbReady = false;
-const SB_CONFIG_KEY = 'hv2_sbConfig';
+const SB_URL = 'https://dcjjzejvahjwowtvdnxf.supabase.co';
+const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamp6ZWp2YWhqd293dHZkbnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDQ0NTgsImV4cCI6MjEwNjI4MDQ1OH0.R_iNN28MweCVlxjNf5r5C2rZIjzQUKCP9z3cKYwHRUs';
 
 function setDbStatus(text, cls) {
   let el = document.getElementById('dbStatus');
@@ -228,15 +229,8 @@ function setDbStatus(text, cls) {
 }
 
 function initSupabase() {
-  let configStr = localStorage.getItem(SB_CONFIG_KEY);
-  if (!configStr) {
-    setDbStatus('No DB - Local Only', 'db-offline');
-    return;
-  }
   try {
-    let config = JSON.parse(configStr);
-    if (!config.url || !config.key) throw new Error('Missing url or key');
-    sb = supabase.createClient(config.url, config.key);
+    sb = supabase.createClient(SB_URL, SB_ANON_KEY);
     dbReady = true;
     setDbStatus('Online ✓', 'db-online');
     loadAllFromSupabase();
@@ -315,39 +309,7 @@ function saveEntry_db(entry) {
   if (dbReady) sbSave('entries', entry.id, entry);
 }
 
-// ========== SUPABASE SETUP UI ==========
-function openSupabaseSetup() {
-  let existing = localStorage.getItem(SB_CONFIG_KEY);
-  if (existing) {
-    try { let c = JSON.parse(existing); document.getElementById('sbUrl').value = c.url || ''; document.getElementById('sbKey').value = c.key || ''; } catch (e) { }
-  }
-  document.getElementById('sqlSetup').textContent = SETUP_SQL;
-  document.getElementById('supabaseSetup').classList.add('show');
-}
-
-function copySql() {
-  navigator.clipboard.writeText(SETUP_SQL).then(() => alert('SQL copied! Paste it in Supabase SQL Editor and run.')).catch(() => { });
-}
-
-function saveSupabaseConfig() {
-  let url = document.getElementById('sbUrl').value.trim();
-  let key = document.getElementById('sbKey').value.trim();
-  if (!url || !key) return alert('URL aur Key dono daalo!');
-  if (!url.startsWith('http')) return alert('URL "https://" se start hona chahiye!');
-  url = url.replace(/\/+$/, '');
-  localStorage.setItem(SB_CONFIG_KEY, JSON.stringify({ url, key }));
-  document.getElementById('supabaseSetup').classList.remove('show');
-  sb = null; dbReady = false;
-  initSupabase();
-  alert('Supabase connected! Data will now sync to cloud.');
-}
-
-function disconnectSupabase() {
-  if (!confirm('Disconnect Supabase? Local data will remain.')) return;
-  localStorage.removeItem(SB_CONFIG_KEY);
-  sb = null; dbReady = false;
-  setDbStatus('No DB - Local Only', 'db-offline');
-}
+// Supabase setup UI removed — auto-connects with hardcoded config
 
 // ========== UTILITIES ==========
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
