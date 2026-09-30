@@ -53,16 +53,124 @@ let settings = LS.get('settings', { revPassword: 'ANITA@1234' });
 function seedDefaultData() {
   if (doctors.length > 0) return; // Already has data
 
-  // Rate Lists
+  // All tests with rates — type: 'normal' (in-house), 'special' (outsourced/CRL)
+  // Tests with rate 0 will be highlighted for staff to fill in
+  let allTests = [
+    // === HAEMATOLOGY (Normal - in-house) ===
+    { name: 'CBC (Complete Blood Count)', rate: 200, type: 'normal' },
+    { name: 'ESR', rate: 100, type: 'normal' },
+    { name: 'Blood Group & Rh', rate: 100, type: 'normal' },
+    { name: 'BT CT (Bleeding/Clotting Time)', rate: 150, type: 'normal' },
+    { name: 'Peripheral Smear', rate: 0, type: 'normal' },
+    { name: 'Platelet Count', rate: 0, type: 'normal' },
+    { name: 'Reticulocyte Count', rate: 0, type: 'normal' },
+    { name: 'MP (Malaria Parasite)', rate: 100, type: 'normal' },
+    { name: 'HbA1c (Glycated Hb)', rate: 0, type: 'special' },
+
+    // === BIOCHEMISTRY (Normal - in-house) ===
+    { name: 'BSF (Blood Sugar Fasting)', rate: 50, type: 'normal' },
+    { name: 'BSPP (Blood Sugar Post Prandial)', rate: 50, type: 'normal' },
+    { name: 'RBS (Random Blood Sugar)', rate: 100, type: 'normal' },
+    { name: 'Urea', rate: 200, type: 'normal' },
+    { name: 'Creatinine', rate: 200, type: 'normal' },
+    { name: 'Uric Acid', rate: 200, type: 'normal' },
+    { name: 'Cholesterol', rate: 350, type: 'normal' },
+    { name: 'Triglycerides', rate: 350, type: 'normal' },
+    { name: 'SGOT (AST)', rate: 150, type: 'normal' },
+    { name: 'SGPT (ALT)', rate: 150, type: 'normal' },
+    { name: 'Albumin', rate: 250, type: 'normal' },
+    { name: 'Total Protein', rate: 250, type: 'normal' },
+    { name: 'Bilirubin (Total/Direct)', rate: 150, type: 'normal' },
+    { name: 'Alk Phosphatase', rate: 350, type: 'normal' },
+    { name: 'Calcium', rate: 200, type: 'normal' },
+    { name: 'Phosphorous', rate: 0, type: 'normal' },
+    { name: 'GGT', rate: 100, type: 'normal' },
+    { name: 'Amylase', rate: 550, type: 'special' },
+    { name: 'Lipase', rate: 900, type: 'special' },
+    { name: 'CPK Total', rate: 900, type: 'special' },
+    { name: 'CPK-MB', rate: 900, type: 'special' },
+    { name: 'Electrolyte (Na/K/Cl)', rate: 500, type: 'special' },
+    { name: 'LDH', rate: 0, type: 'special' },
+
+    // === PROFILES ===
+    { name: 'Lipid Profile', rate: 550, type: 'normal' },
+    { name: 'LFT (Liver Function Test)', rate: 500, type: 'normal' },
+    { name: 'RFT (Renal Function Test)', rate: 1000, type: 'normal' },
+    { name: 'Thyroid Profile (T3/T4/TSH)', rate: 0, type: 'special' },
+    { name: 'KFT (Kidney Function Test)', rate: 0, type: 'normal' },
+
+    // === SEROLOGY ===
+    { name: 'Widal Test', rate: 150, type: 'normal' },
+    { name: 'VDRL', rate: 350, type: 'normal' },
+    { name: 'RA Factor', rate: 0, type: 'normal' },
+    { name: 'ASO Titre', rate: 0, type: 'normal' },
+    { name: 'RA + AST (Combined)', rate: 400, type: 'normal' },
+    { name: 'CRP', rate: 0, type: 'normal' },
+    { name: 'HBsAg', rate: 450, type: 'normal' },
+    { name: 'HCV', rate: 650, type: 'special' },
+    { name: 'HIV I & II', rate: 350, type: 'normal' },
+    { name: 'Dengue NS1', rate: 650, type: 'special' },
+    { name: 'Dengue Profile (NS1+IgG+IgM)', rate: 1200, type: 'special' },
+    { name: 'Chikungunya IgM', rate: 950, type: 'special' },
+    { name: 'Typhi Dot (Typhoid)', rate: 850, type: 'special' },
+    { name: 'Leptospira IgG/IgM', rate: 1800, type: 'special' },
+    { name: 'Trop-I (Troponin I)', rate: 900, type: 'special' },
+
+    // === COAGULATION ===
+    { name: 'PT/INR', rate: 550, type: 'special' },
+    { name: 'APTT', rate: 500, type: 'special' },
+    { name: 'D-Dimer', rate: 1400, type: 'special' },
+
+    // === SPECIAL / OUTSOURCED ===
+    { name: 'HHH (Triple H)', rate: 1400, type: 'special' },
+    { name: 'ABG (Arterial Blood Gas)', rate: 2000, type: 'special' },
+    { name: 'NT-proBNP', rate: 2800, type: 'special' },
+    { name: 'PSA (Prostate)', rate: 0, type: 'special' },
+    { name: 'Mantoux Test', rate: 100, type: 'normal' },
+    { name: 'M Panti (Montepanti)', rate: 400, type: 'special' },
+
+    // === URINE ===
+    { name: 'Urine Routine/Microscopy', rate: 0, type: 'normal' },
+    { name: 'UPT (Urine Pregnancy)', rate: 100, type: 'normal' },
+    { name: 'Urine Culture & Sensitivity', rate: 0, type: 'special' },
+    { name: 'Microalbumin (Urine)', rate: 0, type: 'special' },
+
+    // === STOOL ===
+    { name: 'Stool Routine/Microscopy', rate: 150, type: 'normal' },
+    { name: 'Stool Occult Blood', rate: 0, type: 'normal' },
+
+    // === SEMEN ===
+    { name: 'Semen Analysis', rate: 0, type: 'normal' },
+
+    // === CULTURE & AST ===
+    { name: 'Blood Culture & AST', rate: 0, type: 'special' },
+    { name: 'Pus Culture & AST', rate: 0, type: 'special' },
+    { name: 'Sputum Culture & AST', rate: 0, type: 'special' },
+
+    // === MICROBIOLOGY ===
+    { name: 'AFB Stain (TB)', rate: 0, type: 'normal' },
+    { name: 'Gram Stain', rate: 0, type: 'normal' },
+    { name: 'KOH Mount (Fungal)', rate: 0, type: 'normal' },
+  ];
+
+  // Generate split for a rate list: 50-50 or 60-40
+  function makeTests(tests, docPct) {
+    return tests.map(t => {
+      let docShare = Math.round(t.rate * docPct);
+      let labShare = t.rate - docShare;
+      return { name: t.name, rate: t.rate, labShare, docShare, type: t.type };
+    });
+  }
+
   let rl5050 = {
     id: 'rl_5050',
     name: 'Standard 50-50',
-    tests: []  // Tests to be added — will show highlighted
+    tests: makeTests(allTests, 0.5)
   };
   let rl6040 = {
     id: 'rl_6040',
     name: 'Deepak Tiwari 60-40',
-    tests: []  // Tests to be added — will show highlighted
+    tests: makeTests(allTests, 0.6)
   };
   rateLists = [rl5050, rl6040];
 
