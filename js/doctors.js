@@ -67,16 +67,43 @@ function deleteDoc(id) {
 
 // ========== COLLECTORS ==========
 
-function openCollModal() {
-  document.getElementById('collNameInput').value = '';
-  document.getElementById('collModal').classList.add('show');
+let editingColl = null;
+
+function openCollModal(id) {
+  editingColl = id || null;
+  let modal = document.getElementById('collModal');
+  let title = modal.querySelector('h3');
+  if (id) {
+    let c = collectors.find(x => x.id === id);
+    document.getElementById('collNameInput').value = c ? c.name : '';
+    if (title) title.textContent = 'Edit Collection Boy';
+  } else {
+    document.getElementById('collNameInput').value = '';
+    if (title) title.textContent = 'Naya Collection Boy';
+  }
+  modal.classList.add('show');
 }
 
 function saveCollector() {
   let name = document.getElementById('collNameInput').value.trim();
   if (!name) return alert('Naam daalo!');
-  collectors.push({ id: uid(), name });
-  saveAll(); closeModal('collModal'); renderCollectors(); populateDropdowns();
+  if (editingColl) {
+    let c = collectors.find(x => x.id === editingColl);
+    if (c) {
+      c.name = name;
+      saveAll();
+      if (typeof sbSave === 'function' && dbReady) sbSave('collectors', c.id, c);
+    }
+  } else {
+    let newColl = { id: uid(), name };
+    collectors.push(newColl);
+    saveAll();
+    if (typeof sbSave === 'function' && dbReady) sbSave('collectors', newColl.id, newColl);
+  }
+  editingColl = null;
+  closeModal('collModal');
+  renderCollectors();
+  populateDropdowns();
 }
 
 function renderCollectors() {
@@ -85,10 +112,12 @@ function renderCollectors() {
   if (!collectors.length) { c.innerHTML = '<div class="empty" style="padding:10px;font-size:12px">Koi collection boy nahi hai.</div>'; return; }
   let rows = collectors.map((cl, i) => {
     return '<tr class="coll-row" data-collname="' + cl.name.toLowerCase() + '"><td style="text-align:center;font-size:11px;color:#999">' + (i + 1) + '</td><td style="font-size:13px">' + cl.name + '</td>' +
-      '<td style="text-align:right"><button class="btn btn-sm btn-danger" onclick="deleteColl(\'' + cl.id + '\')" style="font-size:10px;padding:2px 6px">Del</button></td></tr>';
+      '<td style="text-align:right;white-space:nowrap">' +
+      '<button class="btn btn-sm btn-primary" onclick="openCollModal(\'' + cl.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button> ' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteColl(\'' + cl.id + '\')" style="font-size:10px;padding:2px 6px">Del</button></td></tr>';
   }).join('');
   c.innerHTML = '<input id="collSearchInput" placeholder="🔍 Search..." oninput="filterCollectors()" style="width:100%;margin-bottom:6px;padding:5px 8px;border:1px solid var(--n200);border-radius:6px;font-size:12px">' +
-    '<table style="width:100%;font-size:13px"><thead><tr style="background:var(--n100)"><th style="padding:4px 6px;text-align:center;width:30px">#</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px;text-align:right;width:50px"></th></tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<table style="width:100%;font-size:13px"><thead><tr style="background:var(--n100)"><th style="padding:4px 6px;text-align:center;width:30px">#</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px;text-align:right;width:90px"></th></tr></thead><tbody>' + rows + '</tbody></table>' +
     '<div style="font-size:11px;color:#999;margin-top:6px"><span id="collCountLabel">' + collectors.length + '</span> collection boys</div>';
 }
 
