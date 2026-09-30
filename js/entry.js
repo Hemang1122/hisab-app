@@ -77,31 +77,43 @@ function filterTests() {
 }
 
 function testSearchKeyHandler(event) {
-  if (event.key === 'Enter' || event.key === 'Tab') {
+  if (event.key === 'Tab') {
+    // Tab = focus the first visible test row (don't select it)
     event.preventDefault();
-    selectFirstVisibleTest();
+    let visible = document.querySelector('#testCheckboxes .test-row:not([style*="display: none"]):not([style*="display:none"])');
+    if (visible) {
+      visible.focus();
+      visible.classList.add('test-row-focused');
+    }
+  } else if (event.key === 'Enter') {
+    // Enter from search = select first visible test, clear search, stay in search
+    event.preventDefault();
+    let visible = document.querySelector('#testCheckboxes .test-row:not([style*="display: none"]):not([style*="display:none"])');
+    if (visible) {
+      let cb = visible.querySelector('.test-cb');
+      if (cb) { cb.checked = !cb.checked; calcEntry(); }
+    }
+    let s = document.getElementById('testSearch');
+    if (s) { s.value = ''; filterTests(); s.focus(); }
   }
 }
 
 function testRowKeyHandler(event, row) {
   if (event.key === 'Enter' || event.key === ' ') {
+    // Enter/Space on focused row = toggle checkbox, clear search, back to search
     event.preventDefault();
     let cb = row.querySelector('.test-cb');
     if (cb) { cb.checked = !cb.checked; calcEntry(); }
+    row.classList.remove('test-row-focused');
     let s = document.getElementById('testSearch');
-    if (s) s.focus();
+    if (s) { s.value = ''; filterTests(); s.focus(); }
+  } else if (event.key === 'Tab') {
+    // Tab from focused test row = jump to discount field
+    event.preventDefault();
+    row.classList.remove('test-row-focused');
+    let discField = document.getElementById('eDisc');
+    if (discField) discField.focus();
   }
-}
-
-function selectFirstVisibleTest() {
-  let visible = document.querySelector('#testCheckboxes .test-row:not([style*="display: none"]):not([style*="display:none"])');
-  if (visible) {
-    let cb = visible.querySelector('.test-cb');
-    if (cb) { cb.checked = !cb.checked; calcEntry(); }
-  }
-  // Clear search after selecting
-  let s = document.getElementById('testSearch');
-  if (s) { s.value = ''; filterTests(); s.focus(); }
 }
 
 // Reload tests when returning to entry tab (e.g. after editing rate list)
