@@ -327,7 +327,6 @@ function saveRLTestField(rl, rlId) {
 }
 
 function deleteRL(id) {
-  if (!confirm('Rate list delete karni hai?')) return;
   rateLists = rateLists.filter(r => r.id !== id);
   saveAll(); sbDelete('rate_lists', id);
   renderRateLists(); populateDropdowns();

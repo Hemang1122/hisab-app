@@ -19,23 +19,64 @@ function renderRegister() {
     let tnames = e.tests.map(t => t.name).join(', ');
     let status = e.balance > 0 ? '<span class="badge badge-red">₹' + e.balance + ' Baaki</span>' : '<span class="badge badge-green">Paid</span>';
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" style="margin-right:4px">₹ Pay</button>' : '';
-    // Look up current names from live lists so renames reflect everywhere
     let liveDoc = e.doctorId && e.doctorId !== '__self__' ? doctors.find(d => d.id === e.doctorId) : null;
     let docName = liveDoc ? liveDoc.name : (e.doctorName || '-');
     let liveColl = e.collectorId ? collectors.find(c => c.id === e.collectorId) : null;
     let collName = liveColl ? liveColl.name : (e.collectorName || '-');
-    return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + (e.age || '-') + '/' + e.gender + '</td>' +
+    return '<tr>' +
+      '<td style="text-align:center"><input type="checkbox" class="reg-sel" data-id="' + e.id + '" onchange="updateBulkBar()"></td>' +
+      '<td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + (e.age || '-') + '/' + e.gender + '</td>' +
       '<td>' + docName + '</td><td style="font-size:11px">' + tnames + '</td>' +
       '<td>₹' + e.total + '</td><td>₹' + e.paid + '</td><td>' + status + '</td>' +
       '<td>' + e.paymentMode + '</td><td>' + collName + '</td>' +
-      '<td>' + payBtn + '<button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">🗑️</button></td></tr>';
+      '<td>' + payBtn + '</td></tr>';
   }).join('');
-  c.innerHTML = '<table><tr><th>#</th><th>Naam</th><th>Age/G</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Paid</th><th>Status</th><th>Mode</th><th>Collection</th><th></th></tr>' + rows + '</table>' +
+  c.innerHTML =
+    '<div id="regBulkBar" style="display:none;position:sticky;top:0;z-index:5;background:#fff4e6;border:1px solid var(--accent);border-radius:6px;padding:8px 12px;margin-bottom:8px;align-items:center;justify-content:space-between;gap:8px">' +
+      '<span style="font-size:13px"><b id="regSelCount">0</b> selected</span>' +
+      '<div style="display:flex;gap:6px">' +
+        '<button class="btn btn-sm btn-secondary" onclick="clearRegSelection()" style="font-size:11px">Clear</button>' +
+        '<button class="btn btn-sm btn-danger" onclick="bulkDeleteEntries()" style="font-size:11px">🗑️ Delete Selected</button>' +
+      '</div>' +
+    '</div>' +
+    '<table><tr><th style="width:32px;text-align:center"><input type="checkbox" onchange="toggleAllReg(this)" title="Select all"></th><th>#</th><th>Naam</th><th>Age/G</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Paid</th><th>Status</th><th>Mode</th><th>Collection</th><th></th></tr>' + rows + '</table>' +
     '<div class="total-bar"><span>Entries: <b>' + filtered.length + '</b></span><span>Total: <b>₹' + totalAmt + '</b></span><span>Paid: <b>₹' + totalPaid + '</b></span><span>Baaki: <b>₹' + (totalAmt - totalPaid) + '</b></span></div>';
 }
 
+function toggleAllReg(cb) {
+  document.querySelectorAll('.reg-sel').forEach(x => x.checked = cb.checked);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  let selected = document.querySelectorAll('.reg-sel:checked');
+  let bar = document.getElementById('regBulkBar');
+  if (!bar) return;
+  if (selected.length > 0) {
+    bar.style.display = 'flex';
+    document.getElementById('regSelCount').textContent = selected.length;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearRegSelection() {
+  document.querySelectorAll('.reg-sel').forEach(x => x.checked = false);
+  updateBulkBar();
+}
+
+function bulkDeleteEntries() {
+  let ids = Array.from(document.querySelectorAll('.reg-sel:checked')).map(x => x.dataset.id);
+  if (!ids.length) return;
+  entries = entries.filter(e => !ids.includes(e.id));
+  saveLocal();
+  ids.forEach(id => sbDelete('entries', id));
+  renderRegister();
+  refreshSidebar();
+}
+
 function deleteEntry(id) {
-  if (!confirm('Entry delete karni hai?')) return;
+  // Kept for backwards compatibility (sidebar single-delete still uses it)
   entries = entries.filter(e => e.id !== id);
   saveLocal(); sbDelete('entries', id);
   renderRegister(); refreshSidebar();

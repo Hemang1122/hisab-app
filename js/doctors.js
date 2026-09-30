@@ -59,7 +59,6 @@ function filterDoctors() {
 }
 
 function deleteDoc(id) {
-  if (!confirm('Delete?')) return;
   doctors = doctors.filter(d => d.id !== id);
   saveAll(); sbDelete('doctors', id);
   renderDoctors(); populateDropdowns();
@@ -134,7 +133,6 @@ function filterCollectors() {
 }
 
 function deleteColl(id) {
-  if (!confirm('Delete?')) return;
   collectors = collectors.filter(c => c.id !== id);
   saveAll(); sbDelete('collectors', id);
   renderCollectors(); populateDropdowns();
