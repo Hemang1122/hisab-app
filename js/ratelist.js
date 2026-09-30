@@ -89,7 +89,14 @@ function renderRateLists() {
       let isIncomplete = (!t.rate || !t.labShare || !t.docShare);
       let incomplete = isIncomplete ? ' style="background:var(--warn-bg)"' : '';
       let warn = isIncomplete ? ' ⚠️' : '';
-      return '<tr class="rl-test-row" data-rlid="' + rl.id + '" data-testname="' + t.name.toLowerCase() + '" data-incomplete="' + (isIncomplete ? '1' : '0') + '"' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td><td><button class="btn btn-sm btn-secondary" onclick="editSingleTest(\'' + rl.id + '\',' + idx + ')" style="padding:2px 8px;font-size:11px">✏️</button></td></tr>';
+      let ec = 'cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px';
+      return '<tr class="rl-test-row" data-rlid="' + rl.id + '" data-testname="' + t.name.toLowerCase() + '" data-incomplete="' + (isIncomplete ? '1' : '0') + '"' + incomplete + '>' +
+        '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'name\',this)">' + t.name + warn + '</td>' +
+        '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'type\',this)"><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td>' +
+        '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'rate\',this)">₹' + (t.rate || 0) + '</td>' +
+        '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'labShare\',this)">₹' + (t.labShare || 0) + '</td>' +
+        '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'docShare\',this)">₹' + (t.docShare || 0) + '</td>' +
+        '<td></td></tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
 
     // Search + filter toolbar inside the test wrap
@@ -197,23 +204,51 @@ function printRateList(rlId) {
   setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
 }
 
-function editSingleTest(rlId, idx) {
+function inlineEditField(rlId, idx, field, td) {
+  if (td.querySelector('input,select')) return; // already editing
   let rl = rateLists.find(r => r.id === rlId);
   if (!rl || !rl.tests[idx]) return;
   let t = rl.tests[idx];
-  let name = prompt('Test Name:', t.name);
-  if (name === null) return;
-  let rate = prompt('Rate ₹:', t.rate || 0);
-  if (rate === null) return;
-  rate = parseFloat(rate) || 0;
-  let rlName = rl.name.toLowerCase();
-  let docPct = (rlName.includes('60-40') || rlName.includes('60 40')) ? 0.6 : 0.5;
-  let docShare = Math.round(rate * docPct);
-  let labShare = rate - docShare;
-  let type = prompt('Type (normal/special):', t.type || 'normal');
-  if (type === null) return;
-  type = (type === 'special') ? 'special' : 'normal';
-  rl.tests[idx] = { name: name.trim() || t.name, rate, labShare, docShare, type };
+  let oldVal = t[field];
+
+  if (field === 'type') {
+    // Toggle type on click
+    t.type = t.type === 'normal' ? 'special' : 'normal';
+    saveRLTestField(rl, rlId);
+    return;
+  }
+
+  let isNum = (field !== 'name');
+  let input = document.createElement('input');
+  input.type = isNum ? 'number' : 'text';
+  input.value = oldVal || '';
+  input.style.cssText = 'width:100%;padding:3px 5px;font-size:12px;border:1px solid var(--accent);border-radius:4px;box-sizing:border-box';
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+
+  function commit() {
+    let val = isNum ? (parseFloat(input.value) || 0) : input.value.trim();
+    if (field === 'name' && !val) val = oldVal; // don't allow empty name
+    t[field] = val;
+    // Auto-split when rate changes
+    if (field === 'rate') {
+      let rlName = rl.name.toLowerCase();
+      let docPct = (rlName.includes('60-40') || rlName.includes('60 40')) ? 0.6 : 0.5;
+      t.docShare = Math.round(val * docPct);
+      t.labShare = val - t.docShare;
+    }
+    saveRLTestField(rl, rlId);
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = oldVal || ''; input.blur(); }
+  });
+}
+
+function saveRLTestField(rl, rlId) {
   saveAll();
   if (dbReady) sbSave('rate_lists', rlId, rl);
   renderRateLists();
