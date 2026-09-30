@@ -10,16 +10,21 @@ function generateHisab() {
   let filtered = entries.filter(e => e.doctorId === docId && e.date >= from && e.date <= to).sort((a, b) => a.date.localeCompare(b.date));
   if (!filtered.length) { document.getElementById('hisabResult').innerHTML = '<div class="empty">No entries found in this date range.</div>'; return; }
 
+  // Hisab print IGNORES the extra amount entirely — only shows original test-based totals
   let grandTotal = 0, grandDoc = 0, grandLab = 0, grandDiscount = 0, grandPaid = 0, grandBal = 0;
   let rows = filtered.map((e, i) => {
     let docS = 0, labS = 0;
     e.tests.forEach(t => { docS += (t.docShare || 0); labS += (t.labShare || 0); });
-    // Extra charge goes to lab share
-    labS += (e.extra || 0);
-    grandTotal += e.total; grandDoc += docS; grandLab += labS; grandPaid += e.paid; grandBal += e.balance; grandDiscount += (e.discount || 0);
+    // Original total = what tests cost minus discount (extra is excluded from hisab)
+    let origTotal = (e.total || 0) - (e.extra || 0);
+    // Paid amount capped to original total, balance based on original
+    let origPaid = Math.min(e.paid || 0, origTotal);
+    let origBal = Math.max(0, origTotal - origPaid);
+    grandTotal += origTotal; grandDoc += docS; grandLab += labS;
+    grandPaid += origPaid; grandBal += origBal; grandDiscount += (e.discount || 0);
     let tnames = e.tests.map(t => t.name).join(', ');
-    let statusClass = e.balance > 0 ? 'inv-status-due' : 'inv-status-paid';
-    let statusText = e.balance > 0 ? 'Due ₹' + e.balance : 'Paid';
+    let statusClass = origBal > 0 ? 'inv-status-due' : 'inv-status-paid';
+    let statusText = origBal > 0 ? 'Due ₹' + origBal : 'Paid';
 
     if (isSelf) {
       return '<tr>' +
@@ -29,7 +34,7 @@ function generateHisab() {
         '<td class="inv-cell-tests">' + tnames + '</td>' +
         '<td class="inv-cell-amt">₹' + e.subtotal + '</td>' +
         '<td class="inv-cell-amt">' + (e.discount ? '₹' + e.discount : '-') + '</td>' +
-        '<td class="inv-cell-amt inv-cell-total">₹' + e.total + '</td>' +
+        '<td class="inv-cell-amt inv-cell-total">₹' + origTotal + '</td>' +
         '<td class="inv-cell-center"><span class="' + statusClass + '">' + statusText + '</span></td>' +
         '</tr>';
     }
@@ -38,7 +43,7 @@ function generateHisab() {
       '<td class="inv-cell-date">' + formatDateInv(e.date) + '</td>' +
       '<td class="inv-cell-name">' + e.name + '</td>' +
       '<td class="inv-cell-tests">' + tnames + '</td>' +
-      '<td class="inv-cell-amt">₹' + e.total + '</td>' +
+      '<td class="inv-cell-amt">₹' + origTotal + '</td>' +
       '<td class="inv-cell-amt inv-doc-share">₹' + docS + '</td>' +
       '<td class="inv-cell-amt inv-lab-share">₹' + labS + '</td>' +
       '<td class="inv-cell-center"><span class="' + statusClass + '">' + statusText + '</span></td>' +

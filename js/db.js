@@ -1,5 +1,60 @@
 // ========== SUPABASE DATABASE + LOCAL STORAGE ==========
 
+// Special tests imported from SBCL B2B invoice PDF (Aug 2026 outsourced test list)
+const SPECIAL_TESTS_FROM_PDF = [
+  { name: 'ADENOSINE DEAMINASE- (ASCITIC FLUID)', rate: 230 },
+  { name: 'AFB (ZIEHL NELSEN) STAIN', rate: 85 },
+  { name: 'AFB RAPID CULTURE (BD BACTEC MGIT)', rate: 500 },
+  { name: 'ANTI CCP (ANTI CYCLIC CITRULLINATED PEPTIDE)', rate: 350 },
+  { name: 'ANTI NUCLEAR ANTIBODY (ANA)', rate: 200 },
+  { name: 'ASMA (ANTI SMOOTH MUSCLE ANTIBODY)', rate: 950 },
+  { name: 'BIOPSY - LARGE SPECIMEN', rate: 700 },
+  { name: 'BIOPSY - SMALL SPECIMENS (< 2 CM)', rate: 200 },
+  { name: 'BLOOD CULTURE (BD BACTEC)', rate: 490 },
+  { name: 'CERULOPLASMIN', rate: 575 },
+  { name: 'COPPER, SERUM', rate: 325 },
+  { name: 'CULTURE BODY FLUIDS (AEROBIC)', rate: 230 },
+  { name: 'CULTURE SPUTUM (AEROBIC)', rate: 120 },
+  { name: 'CULTURE URINE (AEROBIC)-28 DRUGS', rate: 175 },
+  { name: 'CULTURE, AEROBIC (OT SWAB)', rate: 175 },
+  { name: 'CYTOLOGY - FLUIDS', rate: 230 },
+  { name: 'DOUBLE MARKER (FIRST TRIMESTER SCREENING)', rate: 600 },
+  { name: 'GRAMS STAIN', rate: 115 },
+  { name: 'HAEMOGLOBIN ELECTROPHORESIS (HPLC)', rate: 300 },
+  { name: 'HBA1C', rate: 90 },
+  { name: 'HEPATITIS A VIRUS (HAV IgM)', rate: 450 },
+  { name: 'HEPATITIS B VIRUS - VIRAL LOAD, QUANTITATIVE', rate: 2400 },
+  { name: 'HEPATITIS E VIRUS - IGM (HEV IGM)', rate: 600 },
+  { name: 'HOMOCYSTEINE', rate: 400 },
+  { name: 'HbsAg (RAPID)', rate: 175 },
+  { name: 'Hepatitis Core Antibody IgM (Anti HBc-IgM)', rate: 350 },
+  { name: 'Hepatitis Core Antibody Total (HBcAb-Total)', rate: 350 },
+  { name: 'IMMUNOGLOBULIN IgG', rate: 230 },
+  { name: 'IRON PROFILE - BASIC', rate: 175 },
+  { name: 'LACTIC DEHYDROGENASE (LDH) - ASCITIC FLUID', rate: 200 },
+  { name: 'MYCOBACTERIUM TUBERCULOSIS - TB EXPERT', rate: 1200 },
+  { name: 'MYCOBACTERIUM TUBERCULOSIS DNA PCR - QUALITATIVE', rate: 800 },
+  { name: 'PERITONEAL / ASCITIC FLUID ANALYSIS', rate: 175 },
+  { name: 'PROLACTIN (PRL)', rate: 100 },
+  { name: 'Quadruple Marker Maternal Screen, Serum', rate: 800 },
+  { name: 'SLIDES & BLOCKS ISSUE - MISC.', rate: 200 },
+  { name: 'SPUTUM ROUTINE', rate: 115 },
+  { name: 'STONE ANALYSIS', rate: 650 },
+  { name: 'STOOL EXAMINATION, ROUTINE', rate: 40 },
+  { name: 'TESTOSTERONE FREE - HORMONE ASSAYS', rate: 450 },
+  { name: 'TESTOSTERONE TOTAL', rate: 150 },
+  { name: 'THYROID PROFILE (Import)', rate: 65 },
+  { name: 'THYROID PROFILE FREE (Import)', rate: 120 },
+  { name: 'THYROID STIMULATING HORMONE (TSH) (Import)', rate: 25 },
+  { name: 'TOTAL IGE', rate: 175 },
+  { name: 'URINE ROUTINE WITH CULTURE', rate: 180 },
+  { name: 'VITAMIN B12', rate: 130 },
+  { name: 'VITAMIN D3 25-HYDROXY', rate: 220 },
+  { name: 'WEIL FELIX TEST - INFECTIOUS DISEASES', rate: 500 },
+  { name: 'ALBUMIN (ALB) FLUID', rate: 60 }
+];
+
+
 // Setup SQL for Supabase (shown in setup modal)
 const SETUP_SQL = `-- Run this in Supabase SQL Editor (one time setup)
 create table if not exists rate_lists (
@@ -220,23 +275,43 @@ function migrateData() {
     }
   });
 
-  // Migrate rate lists: merge into one master if old format
+  // Migrate rate lists: merge into one master if old format (preserve customDocShare/customLabShare)
+  function cleanTest(t) {
+    let ct = { name: t.name, rate: t.rate, type: t.type };
+    if (t.customDocShare != null) ct.customDocShare = t.customDocShare;
+    if (t.customLabShare != null) ct.customLabShare = t.customLabShare;
+    return ct;
+  }
   if (rateLists.length > 1 || (rateLists.length === 1 && rateLists[0].id !== 'rl_master')) {
-    // Find the best source (prefer rl_5050 or first one)
     let source = rateLists.find(r => r.id === 'rl_5050') || rateLists[0];
     if (source) {
-      // Strip labShare/docShare from tests
-      let masterTests = source.tests.map(t => ({ name: t.name, rate: t.rate, type: t.type }));
+      let masterTests = source.tests.map(cleanTest);
       rateLists = [{ id: 'rl_master', name: 'SBCL Master Rate List', tests: masterTests }];
       changed = true;
     }
   } else if (rateLists.length === 1 && rateLists[0].id === 'rl_master') {
-    // Already migrated, but clean labShare/docShare from tests if present
     let rl = rateLists[0];
     let needsClean = rl.tests.some(t => t.labShare != null || t.docShare != null);
     if (needsClean) {
-      rl.tests = rl.tests.map(t => ({ name: t.name, rate: t.rate, type: t.type }));
+      rl.tests = rl.tests.map(cleanTest);
       changed = true;
+    }
+  }
+
+  // Seed special tests from PDF import (only add tests not already present)
+  if (rateLists.length === 1) {
+    let rl = rateLists[0];
+    let existingNames = new Set(rl.tests.map(t => t.name.toLowerCase().trim()));
+    let added = 0;
+    SPECIAL_TESTS_FROM_PDF.forEach(t => {
+      if (!existingNames.has(t.name.toLowerCase().trim())) {
+        rl.tests.push({ name: t.name, rate: t.rate, type: 'special' });
+        added++;
+      }
+    });
+    if (added > 0) {
+      changed = true;
+      console.log('Added ' + added + ' special tests to rate list');
     }
   }
 

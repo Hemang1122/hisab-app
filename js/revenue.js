@@ -11,19 +11,30 @@ function showRevenue() {
     return;
   }
 
-  // Totals
+  // Totals — extras are tracked SEPARATELY
   let totalRevenue = 0, totalLabShare = 0, totalDocShare = 0, totalDisc = 0, totalPaid = 0, totalBal = 0;
+  let totalExtras = 0;
+  let extraEntries = [];
   let byDoctor = {}, byPayMode = {}, byCollector = {}, byDate = {};
   let totalTests = 0;
 
   filtered.forEach(e => {
     let labS = 0, docS = 0;
     e.tests.forEach(t => { labS += (t.labShare || 0); docS += (t.docShare || 0); });
-    // Extra amount goes entirely to lab share
-    labS += (e.extra || 0);
     totalRevenue += e.total; totalLabShare += labS; totalDocShare += docS;
     totalDisc += e.discount; totalPaid += e.paid; totalBal += e.balance;
     totalTests += e.tests.length;
+
+    // Track extras separately
+    if (e.extra && e.extra > 0) {
+      totalExtras += e.extra;
+      extraEntries.push({
+        date: e.date, name: e.name, doctorName: e.doctorName,
+        tests: e.tests.map(t => t.name).join(', '),
+        extra: e.extra, reason: e.extraReason || '',
+        subtotal: e.subtotal, total: e.total
+      });
+    }
 
     // By Doctor
     let dName = e.doctorName || 'Unknown';
@@ -72,6 +83,29 @@ function showRevenue() {
   html += statCard('red', 'Total Discount', totalDisc);
   html += statCard('yellow', 'Doctors/Hospitals', Object.keys(byDoctor).length, true);
   html += '</div>';
+
+  // === EXTRA COLLECTIONS (not in hisab print) ===
+  if (extraEntries.length) {
+    html += '<div class="card" style="border-left:4px solid var(--accent);background:#fffbf3">';
+    html += '<h3 style="font-size:15px;margin-bottom:6px;color:var(--accent)">💵 Extra Collections <small style="color:#888;font-weight:normal">(Hisab print mein nahi aata — lab ki extra income)</small></h3>';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">';
+    html += '<div style="background:#fff;padding:8px 14px;border-radius:6px;border:1px solid #e8d3a8"><small style="color:#888">Total Extra Collected</small><div style="font-size:22px;font-weight:700;color:var(--accent)">₹' + totalExtras + '</div></div>';
+    html += '<div style="background:#fff;padding:8px 14px;border-radius:6px;border:1px solid #e8d3a8"><small style="color:#888">Number of Entries</small><div style="font-size:22px;font-weight:700">' + extraEntries.length + '</div></div>';
+    html += '</div>';
+    html += '<div style="overflow-x:auto"><table style="font-size:12px"><tr><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Test Total</th><th style="text-align:right;color:var(--accent)">Extra ₹</th><th>Reason</th></tr>';
+    extraEntries.forEach(x => {
+      html += '<tr>' +
+        '<td>' + x.date + '</td>' +
+        '<td><b>' + x.name + '</b></td>' +
+        '<td style="font-size:11px">' + (x.doctorName || '-') + '</td>' +
+        '<td style="font-size:11px;max-width:180px">' + x.tests + '</td>' +
+        '<td style="text-align:right">₹' + x.subtotal + '</td>' +
+        '<td style="text-align:right;color:var(--accent);font-weight:700">₹' + x.extra + '</td>' +
+        '<td style="font-size:11px;color:#666">' + (x.reason || '-') + '</td>' +
+        '</tr>';
+    });
+    html += '</table></div></div>';
+  }
 
   // === DOCTOR / HOSPITAL REVENUE ===
   html += '<div class="card"><h3 style="font-size:15px;margin-bottom:10px">&#129658; Doctor / Hospital Revenue</h3>';
