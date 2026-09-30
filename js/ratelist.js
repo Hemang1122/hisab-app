@@ -52,9 +52,13 @@ function addRLTest(data) {
 }
 
 function filterRLModal() {
-  let q = (document.getElementById('rlModalSearch').value || '').toLowerCase();
+  let raw = (document.getElementById('rlModalSearch').value || '').toLowerCase().trim();
+  function norm(s) { return s.toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let words = norm(raw).split(' ').filter(w => w.length > 0);
   document.querySelectorAll('#rlTestRows > div').forEach(div => {
-    div.style.display = div.dataset.testname.includes(q) ? '' : 'none';
+    let target = norm(div.dataset.testname);
+    let match = words.length === 0 || words.every(w => target.includes(w));
+    div.style.display = match ? '' : 'none';
   });
 }
 
@@ -151,9 +155,10 @@ function toggleRLTests(btn) {
   }
 }
 
-// Search tests within a rate list
+// Search tests within a rate list (fuzzy: word-based, punctuation-tolerant)
 function searchRLTests(rlId, query) {
-  let q = (query || '').toLowerCase();
+  function norm(s) { return (s || '').toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let words = norm(query).split(' ').filter(w => w.length > 0);
   let rows = document.querySelectorAll('.rl-test-row[data-rlid="' + rlId + '"]');
   if (rows.length) {
     let wrap = rows[0].closest('.rl-tests-wrap');
@@ -164,7 +169,9 @@ function searchRLTests(rlId, query) {
     }
   }
   rows.forEach(row => {
-    row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
+    let target = norm(row.dataset.testname);
+    let match = words.length === 0 || words.every(w => target.includes(w));
+    row.style.display = match ? '' : 'none';
   });
 }
 

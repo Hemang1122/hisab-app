@@ -70,9 +70,16 @@ function loadTestCheckboxes(rl, docPercent) {
 }
 
 function filterTests() {
-  let q = (document.getElementById('testSearch').value || '').toLowerCase();
+  let raw = (document.getElementById('testSearch').value || '').toLowerCase().trim();
+  // Normalize: strip punctuation, collapse whitespace
+  function norm(s) { return s.toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let q = norm(raw);
+  // Split query into words — each must appear as substring in the normalized test name
+  let words = q.split(' ').filter(w => w.length > 0);
   document.querySelectorAll('#testCheckboxes .test-row').forEach(row => {
-    row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
+    let target = norm(row.dataset.testname);
+    let match = words.length === 0 || words.every(w => target.includes(w));
+    row.style.display = match ? '' : 'none';
   });
 }
 
