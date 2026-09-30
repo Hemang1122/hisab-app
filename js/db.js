@@ -49,6 +49,56 @@ let collectors = LS.get('collectors', []);
 let entries = LS.get('entries', []);
 let settings = LS.get('settings', { revPassword: 'ANITA@1234' });
 
+// ========== SEED DATA (runs once if no doctors exist) ==========
+function seedDefaultData() {
+  if (doctors.length > 0) return; // Already has data
+
+  // Rate Lists
+  let rl5050 = {
+    id: 'rl_5050',
+    name: 'Standard 50-50',
+    tests: []  // Tests to be added — will show highlighted
+  };
+  let rl6040 = {
+    id: 'rl_6040',
+    name: 'Deepak Tiwari 60-40',
+    tests: []  // Tests to be added — will show highlighted
+  };
+  rateLists = [rl5050, rl6040];
+
+  // Doctors — all get 50-50 except Deepak Tiwari
+  let doctorList = [
+    { name: 'Deepak Tiwari', rlId: 'rl_6040' },
+    { name: 'Abhishek Singh', rlId: 'rl_5050' },
+    { name: 'Dr. Sunil Mani Tripathi', rlId: 'rl_5050' },
+    { name: 'Dr. C.V Yadav', rlId: 'rl_5050' },
+    { name: 'Dr. Kalyani Thengane', rlId: 'rl_5050' },
+    { name: 'Sandeep Gaud', rlId: 'rl_5050' },
+    { name: 'Dr. Netra Yadav', rlId: 'rl_5050' },
+    { name: 'Dr. Narendra Patil', rlId: 'rl_5050' },
+    { name: 'Dr. Ajay R Yadav', rlId: 'rl_5050' },
+    { name: 'Dr. Amit Kumar Meena', rlId: 'rl_5050' },
+    { name: 'Dr. Khusboo Pandey', rlId: 'rl_5050' },
+    { name: 'Satyendra Tiwari', rlId: 'rl_5050' },
+    { name: 'Lotus Hospital', rlId: 'rl_5050' },
+    { name: 'Dhurva Hospital', rlId: 'rl_5050' },
+    { name: 'Dr. Chandreshekhar Jain', rlId: 'rl_5050' },
+    { name: 'Dr. Ruchi Jain', rlId: 'rl_5050' },
+  ];
+  doctors = doctorList.map(d => ({
+    id: 'doc_' + d.name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_'),
+    name: d.name,
+    rateListId: d.rlId
+  }));
+
+  saveLocal();
+  // Sync to Supabase if connected
+  if (dbReady) {
+    rateLists.forEach(r => sbSave('rate_lists', r.id, r));
+    doctors.forEach(d => sbSave('doctors', d.id, d));
+  }
+}
+
 function saveLocal() {
   LS.set('rateLists', rateLists);
   LS.set('doctors', doctors);

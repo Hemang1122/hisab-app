@@ -39,9 +39,14 @@ function addRLTest(data) {
 }
 
 function autoSplit(el) {
-  let row = el.closest('div'), rate = parseFloat(el.value) || 0, half = Math.round(rate / 2);
-  row.querySelector('.rlt-lab').value = half;
-  row.querySelector('.rlt-doc').value = rate - half;
+  let row = el.closest('div'), rate = parseFloat(el.value) || 0;
+  // Check if editing the 60-40 rate list
+  let rlName = document.getElementById('rlNameInput').value.toLowerCase();
+  let docPct = (rlName.includes('60-40') || rlName.includes('60 40')) ? 0.6 : 0.5;
+  let docShare = Math.round(rate * docPct);
+  let labShare = rate - docShare;
+  row.querySelector('.rlt-lab').value = labShare;
+  row.querySelector('.rlt-doc').value = docShare;
 }
 
 function saveRateList() {
@@ -78,7 +83,11 @@ function renderRateLists() {
   c.innerHTML = rateLists.map(rl => {
     let assignedDocs = doctors.filter(d => d.rateListId === rl.id).map(d => d.name);
     let docStr = assignedDocs.length ? assignedDocs.join(', ') : '<i style="color:#999">Koi doctor assign nahi</i>';
-    let rows = rl.tests.map(t => '<tr><td>' + t.name + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + t.rate + '</td><td>₹' + t.labShare + '</td><td>₹' + t.docShare + '</td></tr>').join('');
+    let rows = rl.tests.length ? rl.tests.map(t => {
+      let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' style="background:var(--warn-bg)"' : '';
+      let warn = (!t.rate || !t.labShare || !t.docShare) ? ' ⚠️' : '';
+      return '<tr' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
     return '<div class="card"><div class="flex-between"><div><b>' + rl.name + '</b><br><small>Doctors: ' + docStr + '</small></div><div>' +
       '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit</button> ' +
       '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')">Delete</button></div></div>' +
