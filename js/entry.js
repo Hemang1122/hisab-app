@@ -55,12 +55,12 @@ function loadTestCheckboxes(rl) {
     container.innerHTML = '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
     calcEntry(); return;
   }
-  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter to select)" oninput="filterTests()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstVisibleTest()}" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
+  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter/Tab to select)" oninput="filterTests()" onkeydown="testSearchKeyHandler(event)" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
   let testsHtml = rl.tests.map((t, i) => {
     let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' test-incomplete' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
-    '<input type="checkbox" class="test-cb" data-idx="' + i + '" data-rlid="' + rl.id + '" onchange="calcEntry()"> ' +
+    '<input type="checkbox" class="test-cb" data-idx="' + i + '" data-rlid="' + rl.id + '" onchange="calcEntry()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.checked=!this.checked;calcEntry();document.getElementById(\'testSearch\').focus();}"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
     '<span class="trate">&#8377;' + (t.rate || 0) + '</span></div>';
@@ -74,6 +74,13 @@ function filterTests() {
   document.querySelectorAll('#testCheckboxes .test-row').forEach(row => {
     row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
   });
+}
+
+function testSearchKeyHandler(event) {
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    event.preventDefault();
+    selectFirstVisibleTest();
+  }
 }
 
 function selectFirstVisibleTest() {
@@ -200,8 +207,7 @@ function saveEntry() {
     id: uid(),
     date: getDateFromPicker('e'),
     doctorId: docVal, doctorName: docName, name,
-    age: document.getElementById('eAge').value,
-    gender: document.getElementById('eGender').value,
+    age: '', gender: '',
     tests, subtotal, discount: discAmt, total,
     paid: payInfo.paid, balance: payInfo.balance,
     paymentMode: document.getElementById('ePayMode').value,
@@ -213,7 +219,6 @@ function saveEntry() {
   saveEntry_db(entry);
   // Reset form
   document.getElementById('eName').value = '';
-  document.getElementById('eAge').value = '';
   document.getElementById('eDisc').value = '0';
   document.getElementById('ePaid').value = '0';
   document.getElementById('ePayStatus').value = 'paid';
@@ -248,7 +253,7 @@ function refreshSidebar() {
 
 // ========== KEYBOARD FLOW ==========
 function initKeyboardFlow() {
-  const FIELD_ORDER = ['eDoctor', 'eName', 'eAge', 'eGender', 'eDisc', 'eDiscType', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
+  const FIELD_ORDER = ['eDoctor', 'eName', 'eDisc', 'eDiscType', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
   function nextField(currentId) {
     let idx = FIELD_ORDER.indexOf(currentId);
     if (idx < 0) return;

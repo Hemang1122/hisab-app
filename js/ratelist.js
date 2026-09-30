@@ -101,7 +101,7 @@ function renderRateLists() {
 
     // Search + filter toolbar inside the test wrap
     let toolbar = '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">' +
-      '<input placeholder="🔍 Test search karo..." oninput="searchRLTests(\'' + rl.id + '\',this.value)" style="flex:1;min-width:120px;padding:5px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12px">' +
+      '<input placeholder="🔍 Test search karo... (Enter to select)" oninput="searchRLTests(\'' + rl.id + '\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstRLTest(\'' + rl.id + '\',this)}" style="flex:1;min-width:120px;padding:5px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:12px">' +
       (incompleteCount ? '<button class="btn btn-sm" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" style="font-size:11px;padding:3px 8px;background:var(--warn);color:#333;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap" data-filtered="0">⚠️ ' + incompleteCount + ' Incomplete</button>' : '') +
       '<button class="btn btn-sm btn-secondary" onclick="printRateList(\'' + rl.id + '\')" style="font-size:11px;padding:3px 8px;white-space:nowrap">🖨️ Print</button>' +
       '</div>';
@@ -142,6 +142,21 @@ function searchRLTests(rlId, query) {
   rows.forEach(row => {
     row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
   });
+}
+
+// Select first visible test in RL search (highlight it)
+function selectFirstRLTest(rlId, input) {
+  let visible = document.querySelector('.rl-test-row[data-rlid="' + rlId + '"]:not([style*="display: none"]):not([style*="display:none"])');
+  if (visible) {
+    // Flash highlight the row
+    visible.style.transition = 'background 0.3s';
+    visible.style.background = '#bbdefb';
+    setTimeout(() => { visible.style.background = ''; }, 1000);
+    visible.scrollIntoView({ block: 'nearest' });
+  }
+  input.value = '';
+  searchRLTests(rlId, '');
+  input.focus();
 }
 
 // Toggle showing only incomplete tests
