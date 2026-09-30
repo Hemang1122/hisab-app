@@ -254,6 +254,12 @@ function saveQuickTestEdit() {
   if (typeof renderRateLists === 'function') renderRateLists();
 }
 
+function removeSelectedTest(idx) {
+  if (idx < 0) return;
+  let cb = document.querySelector('.test-cb[data-idx="' + idx + '"]');
+  if (cb) { cb.checked = false; calcEntry(); }
+}
+
 function getSelectedTests() {
   let rl = getMasterRL();
   if (!rl) return [];
@@ -289,13 +295,22 @@ function calcEntry() {
   }
   document.getElementById('eTotal').textContent = total;
   document.getElementById('entryTotals').style.display = tests.length ? 'flex' : 'none';
-  // Selected tests summary
+  // Selected tests summary — chips with × on hover to deselect
   let sumEl = document.getElementById('selectedTestsSummary');
   if (sumEl) {
     if (tests.length) {
+      let rl = getMasterRL();
       sumEl.style.display = 'block';
       sumEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">' +
-        tests.map(t => '<span style="background:var(--accent);color:white;padding:2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:3px">' + t.name + ' <small>₹' + t.rate + '</small></span>').join('') +
+        tests.map(t => {
+          // Find this test's index in the master rate list
+          let idx = rl ? rl.tests.findIndex(x => x.name === t.name) : -1;
+          let esc = t.name.replace(/'/g, "\\'");
+          return '<span class="sel-test-chip" style="background:var(--accent);color:white;padding:2px 6px 2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:default;position:relative" onmouseover="this.querySelector(\'.chip-x\').style.display=\'inline-flex\'" onmouseout="this.querySelector(\'.chip-x\').style.display=\'none\'">' +
+            t.name + ' <small>₹' + t.rate + '</small>' +
+            '<span class="chip-x" onclick="removeSelectedTest(' + idx + ')" title="Remove test" style="display:none;background:rgba(255,255,255,.3);color:white;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;margin-left:2px" onmouseover="this.style.background=\'rgba(255,255,255,.5)\'" onmouseout="this.style.background=\'rgba(255,255,255,.3)\'">×</span>' +
+          '</span>';
+        }).join('') +
         '</div>';
     } else {
       sumEl.style.display = 'none';
