@@ -99,19 +99,21 @@ function renderRateLists() {
         '<td></td></tr>';
     }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
 
-    // Search + filter toolbar inside the test wrap
-    let toolbar = '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">' +
-      '<input placeholder="🔍 Test search karo... (Enter to select)" oninput="searchRLTests(\'' + rl.id + '\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstRLTest(\'' + rl.id + '\',this)}" style="flex:1;min-width:120px;padding:8px 12px;border:2px solid var(--accent);border-radius:var(--radius);font-size:13px;background:var(--accent-light,#e3f2fd);font-weight:500">' +
-      (incompleteCount ? '<button class="btn btn-sm" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" style="font-size:11px;padding:3px 8px;background:var(--warn);color:#333;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap" data-filtered="0">⚠️ ' + incompleteCount + ' Incomplete</button>' : '') +
-      '<button class="btn btn-sm btn-secondary" onclick="printRateList(\'' + rl.id + '\')" style="font-size:11px;padding:3px 8px;white-space:nowrap">🖨️ Print</button>' +
+    // Search + filter toolbar — shown inside test table area
+    let toolbar = '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">' +
+      '<input placeholder="🔍 Search test..." oninput="searchRLTests(\'' + rl.id + '\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstRLTest(\'' + rl.id + '\',this)}" style="flex:1;min-width:80px;padding:5px 8px;border:1px solid var(--gray-300,#ccc);border-radius:var(--radius);font-size:12px">' +
+      (incompleteCount ? '<button class="btn btn-sm" onclick="filterRLIncomplete(\'' + rl.id + '\',this)" style="font-size:10px;padding:2px 6px;background:var(--warn);color:#333;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap" data-filtered="0">⚠️ ' + incompleteCount + '</button>' : '') +
+      '<button class="btn btn-sm btn-secondary" onclick="printRateList(\'' + rl.id + '\')" style="font-size:10px;padding:2px 6px;white-space:nowrap">🖨️ Print</button>' +
       '</div>';
 
-    return '<div class="card"><div class="flex-between"><div><b>' + rl.name + '</b><br><small>Doctors: ' + docStr + '</small></div><div>' +
-      '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit All</button> ' +
-      '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')">Delete</button></div></div>' +
-      toolbar +
-      '<div style="margin-top:4px"><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
-      '<div class="rl-tests-wrap" style="display:none;margin-top:6px"><table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
+    return '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">' +
+      '<div style="flex:1;min-width:0"><b>' + rl.name + '</b><br><small style="color:var(--gray-500,#777)">Doctors: ' + docStr + '</small></div>' +
+      '<div style="display:flex;gap:4px;flex-shrink:0">' +
+      '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')" style="font-size:11px;padding:4px 8px">Edit All</button>' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')" style="font-size:11px;padding:4px 8px">Delete</button></div></div>' +
+      '<div><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
+      '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
   }).join('');
 }
 

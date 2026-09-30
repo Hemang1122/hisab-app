@@ -264,6 +264,26 @@ function seedDefaultData() {
   }
 }
 
+// Sync missing tests from 50-50 into 60-40 (runs every load)
+function syncRateLists() {
+  let rl5050 = rateLists.find(r => r.id === 'rl_5050');
+  let rl6040 = rateLists.find(r => r.id === 'rl_6040');
+  if (!rl5050 || !rl6040) return;
+  let existing = new Set(rl6040.tests.map(t => t.name));
+  let added = 0;
+  rl5050.tests.forEach(t => {
+    if (!existing.has(t.name)) {
+      let doc = Math.floor(t.rate * 0.6);
+      rl6040.tests.push({ name: t.name, rate: t.rate, labShare: t.rate - doc, docShare: doc, type: t.type });
+      added++;
+    }
+  });
+  if (added) {
+    saveLocal();
+    if (dbReady) sbSave('rate_lists', rl6040.id, rl6040);
+  }
+}
+
 function saveLocal() {
   LS.set('rateLists', rateLists);
   LS.set('doctors', doctors);
