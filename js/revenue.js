@@ -25,11 +25,15 @@ function showRevenue() {
     totalDisc += e.discount; totalPaid += e.paid; totalBal += e.balance;
     totalTests += e.tests.length;
 
+    // Resolve current doctor name from live list (so renames reflect)
+    let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;
+    let currentDocName = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : 'Unknown'));
+
     // Track extras separately
     if (e.extra && e.extra > 0) {
       totalExtras += e.extra;
       extraEntries.push({
-        date: e.date, name: e.name, doctorName: e.doctorName,
+        date: e.date, name: e.name, doctorName: currentDocName,
         tests: e.tests.map(t => t.name).join(', '),
         extra: e.extra, reason: e.extraReason || '',
         subtotal: e.subtotal, total: e.total
@@ -37,7 +41,7 @@ function showRevenue() {
     }
 
     // By Doctor
-    let dName = e.doctorName || 'Unknown';
+    let dName = currentDocName;
     if (!byDoctor[dName]) byDoctor[dName] = { revenue: 0, lab: 0, doc: 0, count: 0, paid: 0, balance: 0, tests: 0 };
     byDoctor[dName].revenue += e.total; byDoctor[dName].lab += labS;
     byDoctor[dName].doc += docS; byDoctor[dName].count++;
@@ -47,8 +51,12 @@ function showRevenue() {
     // By Payment Mode
     if (e.paid > 0) byPayMode[e.paymentMode] = (byPayMode[e.paymentMode] || 0) + e.paid;
 
-    // By Collector
-    let cName = e.collectorName || '';
+    // By Collector — always use CURRENT name from collectors list (not stored snapshot)
+    let cName = '';
+    if (e.collectorId) {
+      let liveColl = collectors.find(c => c.id === e.collectorId);
+      cName = liveColl ? liveColl.name : (e.collectorName || '');
+    }
     if (cName) {
       if (!byCollector[cName]) byCollector[cName] = { samples: 0, revenue: 0, paid: 0, balance: 0, tests: 0 };
       byCollector[cName].samples++; byCollector[cName].revenue += e.total;

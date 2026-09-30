@@ -19,10 +19,15 @@ function renderRegister() {
     let tnames = e.tests.map(t => t.name).join(', ');
     let status = e.balance > 0 ? '<span class="badge badge-red">₹' + e.balance + ' Baaki</span>' : '<span class="badge badge-green">Paid</span>';
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" style="margin-right:4px">₹ Pay</button>' : '';
+    // Look up current names from live lists so renames reflect everywhere
+    let liveDoc = e.doctorId && e.doctorId !== '__self__' ? doctors.find(d => d.id === e.doctorId) : null;
+    let docName = liveDoc ? liveDoc.name : (e.doctorName || '-');
+    let liveColl = e.collectorId ? collectors.find(c => c.id === e.collectorId) : null;
+    let collName = liveColl ? liveColl.name : (e.collectorName || '-');
     return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + (e.age || '-') + '/' + e.gender + '</td>' +
-      '<td>' + e.doctorName + '</td><td style="font-size:11px">' + tnames + '</td>' +
+      '<td>' + docName + '</td><td style="font-size:11px">' + tnames + '</td>' +
       '<td>₹' + e.total + '</td><td>₹' + e.paid + '</td><td>' + status + '</td>' +
-      '<td>' + e.paymentMode + '</td><td>' + (e.collectorName || '-') + '</td>' +
+      '<td>' + e.paymentMode + '</td><td>' + collName + '</td>' +
       '<td>' + payBtn + '<button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">🗑️</button></td></tr>';
   }).join('');
   c.innerHTML = '<table><tr><th>#</th><th>Naam</th><th>Age/G</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Paid</th><th>Status</th><th>Mode</th><th>Collection</th><th></th></tr>' + rows + '</table>' +

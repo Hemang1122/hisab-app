@@ -277,7 +277,9 @@ function refreshSidebar() {
     let tnames = e.tests.map(t => t.name).join(', ');
     let st = e.balance > 0 ? '<span class="badge badge-red">&#8377;' + e.balance + '</span>' : '<span class="badge badge-green">Paid</span>';
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" title="Pay Balance">&#8377;</button>' : '';
-    return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + e.doctorName + '</td><td style="font-size:11px;max-width:100px">' + tnames + '</td><td>&#8377;' + e.total + '</td><td>' + st + '</td>' +
+    let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;
+    let docName = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
+    return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + docName + '</td><td style="font-size:11px;max-width:100px">' + tnames + '</td><td>&#8377;' + e.total + '</td><td>' + st + '</td>' +
       '<td style="white-space:nowrap">' + payBtn + '<button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">&#10005;</button></td></tr>';
   }).join('');
   c.innerHTML = '<table><tr><th>#</th><th>Naam</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Status</th><th></th></tr>' + rows + '</table>' +
