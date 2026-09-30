@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=33">
+<link rel="stylesheet" href="css/styles.css?v=34">
 </head>
 <body>
 
@@ -19,6 +19,7 @@
   <div class="sidebar-nav" id="sidebarNav">
     <a href="#" onclick="showTab('entry');return false" class="active" data-tab="entry"><span class="nav-icon">&#128221;</span> Naya Entry</a>
     <a href="#" onclick="showTab('register');return false" data-tab="register"><span class="nav-icon">&#128203;</span> Register</a>
+    <a href="#" onclick="showTab('mywork');return false" data-tab="mywork"><span class="nav-icon">&#128203;</span> Mera Kaam</a>
     <a href="#" onclick="showTab('hisab');return false" data-tab="hisab"><span class="nav-icon">&#128424;</span> Hisab Print</a>
     <a href="#" onclick="showTab('revenue');return false" data-tab="revenue"><span class="nav-icon">&#128200;</span> Revenue</a>
     <a href="#" onclick="showTab('ratelist');return false" data-tab="ratelist"><span class="nav-icon">&#128196;</span> Rate List</a>
@@ -39,8 +40,22 @@
     </div>
   </div>
   <div class="header-right">
+    <span id="operatorBadge" onclick="promptOperator()" title="Click to change operator" style="display:none;cursor:pointer;background:var(--brand-surface);color:var(--brand);padding:4px 10px;border-radius:14px;font-size:12px;font-weight:600;margin-right:8px;border:1px solid var(--brand-mid)">👤 <span id="operatorName">—</span></span>
     <span id="dbStatus" class="db-status db-loading">Connecting...</span>
   </div>
+</div>
+
+<!-- Operator Name Modal -->
+<div class="modal-overlay" id="operatorModal">
+<div class="modal" style="max-width:400px;text-align:center">
+<div style="font-size:36px;margin-bottom:6px">👤</div>
+<h3 style="margin-bottom:4px">Aapka Naam</h3>
+<p style="font-size:12px;color:#666;margin-bottom:14px">Session ke liye apna naam daalo. Har entry aapke naam ke saath save hogi.</p>
+<input id="operatorInput" placeholder="e.g. Anita" style="text-align:center;font-size:16px;padding:10px" onkeydown="if(event.key==='Enter')saveOperator()">
+<div style="margin-top:14px">
+<button class="btn btn-primary" onclick="saveOperator()" style="min-width:120px">✓ Continue</button>
+</div>
+</div>
 </div>
 
 <!-- TAB: Naya Entry -->
@@ -138,6 +153,35 @@
 <div><input id="regSearch" placeholder="Search naam..." oninput="renderRegister()"></div>
 </div>
 <div id="registerList"></div>
+</div>
+
+<!-- TAB: Mera Kaam -->
+<div id="tab-mywork" class="tab">
+<div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>👤 Mera Kaam <small id="myWorkOperator" style="font-size:13px;color:#666;font-weight:normal;margin-left:6px"></small></h2></div>
+<div class="card no-print">
+<div style="margin-bottom:10px">
+<label style="display:block;margin-bottom:6px;font-size:12px;color:#666">Timeline:</label>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button class="btn btn-sm btn-secondary" onclick="setMyWorkPreset('today')" style="font-size:11px;padding:4px 10px">Today</button>
+<button class="btn btn-sm btn-secondary" onclick="setMyWorkPreset('yesterday')" style="font-size:11px;padding:4px 10px">Yesterday</button>
+<button class="btn btn-sm btn-secondary" onclick="setMyWorkPreset('last7')" style="font-size:11px;padding:4px 10px">Last 7 Days</button>
+<button class="btn btn-sm btn-secondary" onclick="setMyWorkPreset('thisMonth')" style="font-size:11px;padding:4px 10px">This Month</button>
+<button class="btn btn-sm btn-secondary" onclick="setMyWorkPreset('all')" style="font-size:11px;padding:4px 10px">All My Work</button>
+</div>
+</div>
+<div class="row">
+<div><label>Date From</label><input type="date" id="mwFrom"></div>
+<div><label>Date To</label><input type="date" id="mwTo"></div>
+<div><label>Operator</label>
+<select id="mwOperator" onchange="showMyWork()">
+<option value="__me__">Just Me</option>
+<option value="__all__">All Operators</option>
+</select>
+</div>
+<div style="align-self:end"><button class="btn btn-primary" onclick="showMyWork()">🔍 Show Work</button></div>
+</div>
+</div>
+<div id="myWorkResult"></div>
 </div>
 
 <!-- TAB: Hisab Print -->
@@ -349,15 +393,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=33"></script>
-<script src="js/ui.js?v=33"></script>
-<script src="js/ratelist.js?v=33"></script>
-<script src="js/doctors.js?v=33"></script>
-<script src="js/entry.js?v=33"></script>
-<script src="js/register.js?v=33"></script>
-<script src="js/hisab.js?v=33"></script>
-<script src="js/revenue.js?v=33"></script>
-<script src="js/backup.js?v=33"></script>
+<script src="js/db.js?v=34"></script>
+<script src="js/ui.js?v=34"></script>
+<script src="js/ratelist.js?v=34"></script>
+<script src="js/doctors.js?v=34"></script>
+<script src="js/entry.js?v=34"></script>
+<script src="js/register.js?v=34"></script>
+<script src="js/hisab.js?v=34"></script>
+<script src="js/revenue.js?v=34"></script>
+<script src="js/mywork.js?v=34"></script>
+<script src="js/backup.js?v=34"></script>
 
 <!-- Init -->
 <script>
@@ -380,6 +425,7 @@ function init() {
   initDoctorChange();
   initKeyboardFlow();
   initSupabase();
+  if (typeof initOperator === 'function') initOperator();
   // Restore tab from URL hash or set initial state
   let hash = location.hash.replace('#','');
   if (hash && TAB_KEYS.includes(hash)) { showTab(hash, true); }

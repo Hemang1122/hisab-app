@@ -15,7 +15,7 @@ function showRevenue() {
   let totalRevenue = 0, totalLabShare = 0, totalDocShare = 0, totalDisc = 0, totalPaid = 0, totalBal = 0;
   let totalExtras = 0;
   let extraEntries = [];
-  let byDoctor = {}, byPayMode = {}, byCollector = {}, byDate = {};
+  let byDoctor = {}, byPayMode = {}, byCollector = {}, byDate = {}, byOperator = {};
   let totalTests = 0;
 
   filtered.forEach(e => {
@@ -67,6 +67,18 @@ function showRevenue() {
     // By Date
     if (!byDate[e.date]) byDate[e.date] = { count: 0, revenue: 0, paid: 0 };
     byDate[e.date].count++; byDate[e.date].revenue += e.total; byDate[e.date].paid += e.paid;
+
+    // By Operator (who filled the entry)
+    let op = e.filledBy || 'Unknown';
+    if (!byOperator[op]) byOperator[op] = { count: 0, revenue: 0, paid: 0, tests: 0, dates: new Set(), byDate: {} };
+    byOperator[op].count++;
+    byOperator[op].revenue += e.total;
+    byOperator[op].paid += e.paid;
+    byOperator[op].tests += (e.tests || []).length;
+    byOperator[op].dates.add(e.date);
+    if (!byOperator[op].byDate[e.date]) byOperator[op].byDate[e.date] = { count: 0, revenue: 0 };
+    byOperator[op].byDate[e.date].count++;
+    byOperator[op].byDate[e.date].revenue += e.total;
   });
 
   let cashCollected = byPayMode['Cash'] || 0;
@@ -150,6 +162,39 @@ function showRevenue() {
     html += '</table></div>';
   }
 
+  // === OPERATOR ACTIVITY ===
+  let opEntries = Object.entries(byOperator).filter(([n]) => n && n !== 'Unknown');
+  if (opEntries.length || byOperator['Unknown']) {
+    opEntries = Object.entries(byOperator).sort((a, b) => b[1].revenue - a[1].revenue);
+    html += '<div class="card" style="border-left:4px solid var(--brand-light)"><h3 style="font-size:15px;margin-bottom:10px">👤 Operator Activity <small style="color:#888;font-weight:normal">(kaun kitna kaam kiya)</small></h3>';
+    // Summary cards
+    html += '<div class="stat-grid" style="margin-bottom:12px">';
+    opEntries.forEach(([name, o]) => {
+      html += '<div class="stat-card blue" style="text-align:left;padding:14px">' +
+        '<div style="font-weight:700;font-size:14px;margin-bottom:6px;color:var(--brand)">' + name + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:12px">' +
+        '<span>Entries: <b>' + o.count + '</b></span>' +
+        '<span>Days: <b>' + o.dates.size + '</b></span>' +
+        '<span>Revenue: <b>₹' + o.revenue + '</b></span>' +
+        '<span>Tests: <b>' + o.tests + '</b></span>' +
+        '<span>Paid: <b style="color:var(--paid)">₹' + o.paid + '</b></span>' +
+        '<span>Avg: <b>₹' + (o.count > 0 ? Math.round(o.revenue / o.count) : 0) + '</b></span>' +
+        '</div></div>';
+    });
+    html += '</div>';
+    // Day-by-day per operator
+    html += '<h4 style="font-size:13px;margin:10px 0 6px">Day-by-day by Operator</h4>';
+    html += '<div style="overflow-x:auto"><table style="font-size:12px"><tr><th>Operator</th><th>Date</th><th style="text-align:right">Entries</th><th style="text-align:right">Revenue</th></tr>';
+    opEntries.forEach(([name, o]) => {
+      let dateList = Object.entries(o.byDate).sort((a, b) => a[0].localeCompare(b[0]));
+      dateList.forEach(([date, d], i) => {
+        html += '<tr>' + (i === 0 ? '<td rowspan="' + dateList.length + '"><b>' + name + '</b></td>' : '') +
+          '<td>' + date + '</td><td style="text-align:right">' + d.count + '</td><td style="text-align:right">₹' + d.revenue + '</td></tr>';
+      });
+    });
+    html += '</table></div></div>';
+  }
+
   // === PAYMENT MODE BREAKDOWN ===
   html += '<div class="card"><h3 style="font-size:15px;margin-bottom:10px">&#128179; Payment Mode Breakdown</h3>';
   let payEntries = Object.entries(byPayMode).sort((a, b) => b[1] - a[1]);
@@ -206,7 +251,7 @@ function showRevenue() {
   window._lastRevenueData = {
     from, to, filtered, totalRevenue, totalLabShare, totalDocShare, totalDisc,
     totalPaid, totalBal, totalTests, totalExtras, extraEntries,
-    byDoctor, byPayMode, byCollector, byDate, cashCollected: byPayMode['Cash'] || 0
+    byDoctor, byPayMode, byCollector, byDate, byOperator, cashCollected: byPayMode['Cash'] || 0
   };
 
   document.getElementById('revenueResult').innerHTML = html;
@@ -326,6 +371,19 @@ function printRevenueReport() {
     html += '</tbody></table></div>';
   }
 
+  // OPERATOR ACTIVITY (print)
+  if (d.byOperator) {
+    let opList = Object.entries(d.byOperator).sort((a, b) => b[1].revenue - a[1].revenue);
+    if (opList.length) {
+      html += '<div class="rr-section"><h2>Operator Activity</h2>';
+      html += '<table class="rr-table"><thead><tr><th>#</th><th>Operator</th><th class="rr-right">Days</th><th class="rr-right">Entries</th><th class="rr-right">Tests</th><th class="rr-right">Revenue</th><th class="rr-right">Paid</th><th class="rr-right">Avg Ticket</th></tr></thead><tbody>';
+      opList.forEach(([n, o], i) => {
+        html += '<tr><td class="rr-center">' + (i + 1) + '</td><td><b>' + n + '</b></td><td class="rr-right">' + o.dates.size + '</td><td class="rr-right">' + o.count + '</td><td class="rr-right">' + o.tests + '</td><td class="rr-right">₹' + o.revenue + '</td><td class="rr-right">₹' + o.paid + '</td><td class="rr-right">₹' + (o.count > 0 ? Math.round(o.revenue / o.count) : 0) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+  }
+
   // PAYMENT MODES
   let payList = Object.entries(d.byPayMode).sort((a, b) => b[1] - a[1]);
   if (payList.length) {
@@ -363,12 +421,12 @@ function printRevenueReport() {
 
   // ALL ENTRIES (Ledger)
   html += '<div class="rr-section rr-page-break"><h2>Full Ledger — All Entries</h2>';
-  html += '<table class="rr-table"><thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th class="rr-right">Total</th><th class="rr-right">Paid</th><th class="rr-right">Balance</th><th>Mode</th></tr></thead><tbody>';
+  html += '<table class="rr-table"><thead><tr><th>#</th><th>Date</th><th>Operator</th><th>Patient</th><th>Doctor</th><th>Tests</th><th class="rr-right">Total</th><th class="rr-right">Paid</th><th class="rr-right">Balance</th><th>Mode</th></tr></thead><tbody>';
   d.filtered.sort((a, b) => a.date.localeCompare(b.date)).forEach((e, i) => {
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(dc => dc.id === e.doctorId) : null;
     let dn = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
     let tn = e.tests.map(t => t.name).join(', ');
-    html += '<tr><td class="rr-center">' + (i + 1) + '</td><td>' + formatDate(e.date) + '</td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px">' + tn + '</td><td class="rr-right"><b>₹' + e.total + '</b></td><td class="rr-right">₹' + e.paid + '</td><td class="rr-right" style="color:' + (e.balance > 0 ? '#c44536' : '#1b874b') + '">₹' + e.balance + '</td><td style="font-size:10px">' + e.paymentMode + '</td></tr>';
+    html += '<tr><td class="rr-center">' + (i + 1) + '</td><td>' + formatDate(e.date) + '</td><td style="font-size:10px">' + (e.filledBy || '-') + '</td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px">' + tn + '</td><td class="rr-right"><b>₹' + e.total + '</b></td><td class="rr-right">₹' + e.paid + '</td><td class="rr-right" style="color:' + (e.balance > 0 ? '#c44536' : '#1b874b') + '">₹' + e.balance + '</td><td style="font-size:10px">' + e.paymentMode + '</td></tr>';
   });
   html += '</tbody></table></div>';
 

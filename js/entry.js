@@ -335,6 +335,11 @@ function calcEntry() {
 }
 
 function saveEntry() {
+  // Require operator name before saving
+  if (typeof getOperator === 'function' && !getOperator()) {
+    if (typeof promptOperator === 'function') promptOperator();
+    return alert('Pehle apna naam daalo (operator name)');
+  }
   let docVal = document.getElementById('eDoctor').value;
   let isSelf = docVal === '__self__';
   if (!isSelf) {
@@ -372,6 +377,7 @@ function saveEntry() {
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
+      updatedBy: (typeof getOperator === 'function' ? getOperator() : ''),
       updated: new Date().toISOString()
     };
     entries[idx] = updated;
@@ -394,6 +400,7 @@ function saveEntry() {
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
+      filledBy: (typeof getOperator === 'function' ? getOperator() : ''),
       created: new Date().toISOString()
     };
     entries.push(entry);

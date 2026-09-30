@@ -47,7 +47,7 @@ function toggleSidebar() {
 
 // ========== TABS ==========
 let revUnlocked = false;
-const TAB_KEYS = ['entry', 'register', 'hisab', 'revenue', 'ratelist', 'doctors', 'settings'];
+const TAB_KEYS = ['entry', 'register', 'mywork', 'hisab', 'revenue', 'ratelist', 'doctors', 'settings'];
 
 function showTab(t, skipHistory) {
   document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
@@ -77,6 +77,7 @@ function showTab(t, skipHistory) {
   if (t === 'register') renderRegister();
   if (t === 'ratelist') renderRateLists();
   if (t === 'doctors') renderDoctors();
+  if (t === 'mywork') { if (typeof populateMyWorkOperators === 'function') populateMyWorkOperators(); if (typeof initMyWorkDates === 'function') initMyWorkDates(); }
   if (t === 'entry') { reloadEntryTests(); refreshSidebar(); }
 }
 
