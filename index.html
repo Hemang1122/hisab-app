@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=28">
+<link rel="stylesheet" href="css/styles.css?v=29">
 </head>
 <body>
 
@@ -93,6 +93,7 @@
 <select id="ePayStatus" onchange="togglePayFields()">
 <option value="paid">Paid</option>
 <option value="partial">Balance</option>
+<option value="hospital">Hospital Paid</option>
 </select>
 <input id="ePaid" type="number" placeholder="Paid &#8377;" oninput="calcEntry()" style="display:none">
 <span id="balDisplay"></span>
@@ -339,15 +340,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=28"></script>
-<script src="js/ui.js?v=28"></script>
-<script src="js/ratelist.js?v=28"></script>
-<script src="js/doctors.js?v=28"></script>
-<script src="js/entry.js?v=28"></script>
-<script src="js/register.js?v=28"></script>
-<script src="js/hisab.js?v=28"></script>
-<script src="js/revenue.js?v=28"></script>
-<script src="js/backup.js?v=28"></script>
+<script src="js/db.js?v=29"></script>
+<script src="js/ui.js?v=29"></script>
+<script src="js/ratelist.js?v=29"></script>
+<script src="js/doctors.js?v=29"></script>
+<script src="js/entry.js?v=29"></script>
+<script src="js/register.js?v=29"></script>
+<script src="js/hisab.js?v=29"></script>
+<script src="js/revenue.js?v=29"></script>
+<script src="js/backup.js?v=29"></script>
 
 <!-- Init -->
 <script>

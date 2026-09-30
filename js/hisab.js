@@ -11,7 +11,8 @@ function generateHisab() {
   if (!filtered.length) { document.getElementById('hisabResult').innerHTML = '<div class="empty">No entries found in this date range.</div>'; return; }
 
   // Hisab print IGNORES the extra amount entirely — only shows original test-based totals
-  let grandTotal = 0, grandDoc = 0, grandLab = 0, grandDiscount = 0, grandPaid = 0, grandBal = 0;
+  let grandTotal = 0, grandDoc = 0, grandLab = 0, grandDiscount = 0, grandPaid = 0, grandBal = 0, grandHospital = 0;
+  let hospitalCount = 0;
   let rows = filtered.map((e, i) => {
     let docS = 0, labS = 0;
     e.tests.forEach(t => { docS += (t.docShare || 0); labS += (t.labShare || 0); });
@@ -22,9 +23,19 @@ function generateHisab() {
     let origBal = Math.max(0, origTotal - origPaid);
     grandTotal += origTotal; grandDoc += docS; grandLab += labS;
     grandPaid += origPaid; grandBal += origBal; grandDiscount += (e.discount || 0);
+    if (e.hospitalPaid) { grandHospital += origTotal; hospitalCount++; }
     let tnames = e.tests.map(t => t.name).join(', ');
-    let statusClass = origBal > 0 ? 'inv-status-due' : 'inv-status-paid';
-    let statusText = origBal > 0 ? 'Due ₹' + origBal : 'Paid';
+    let statusClass, statusText;
+    if (e.hospitalPaid) {
+      statusClass = 'inv-status-hospital';
+      statusText = '🏥 Hospital';
+    } else if (origBal > 0) {
+      statusClass = 'inv-status-due';
+      statusText = 'Due ₹' + origBal;
+    } else {
+      statusClass = 'inv-status-paid';
+      statusText = 'Paid';
+    }
 
     if (isSelf) {
       return '<tr>' +
@@ -149,6 +160,14 @@ function generateHisab() {
     html += '<div class="inv-sum-icon">⏳</div>';
     html += '<div class="inv-sum-label">Balance Due</div>';
     html += '<div class="inv-sum-value">₹' + grandBal.toLocaleString('en-IN') + '</div>';
+    html += '</div>';
+  }
+  if (grandHospital > 0) {
+    html += '<div class="inv-sum-card inv-sum-hospital">';
+    html += '<div class="inv-sum-icon">🏥</div>';
+    html += '<div class="inv-sum-label">Hospital Paid</div>';
+    html += '<div class="inv-sum-value">₹' + grandHospital.toLocaleString('en-IN') + '</div>';
+    html += '<div style="font-size:10px;color:#666;margin-top:2px">' + hospitalCount + ' entries</div>';
     html += '</div>';
   }
   html += '</div>';

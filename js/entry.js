@@ -5,16 +5,17 @@ let editingEntryId = null;
 function togglePayFields() {
   let status = document.getElementById('ePayStatus').value;
   let paidInput = document.getElementById('ePaid');
-  if (status === 'paid') { paidInput.style.display = 'none'; calcEntry(); }
+  if (status === 'paid' || status === 'hospital') { paidInput.style.display = 'none'; calcEntry(); }
   else { paidInput.style.display = 'block'; paidInput.focus(); calcEntry(); }
 }
 
 function getPaymentInfo() {
   let status = document.getElementById('ePayStatus').value;
   let total = parseInt(document.getElementById('eTotal').textContent) || 0;
-  if (status === 'paid') return { paid: total, balance: 0 };
+  if (status === 'paid') return { paid: total, balance: 0, hospitalPaid: false };
+  if (status === 'hospital') return { paid: 0, balance: total, hospitalPaid: true };
   let paid = parseFloat(document.getElementById('ePaid').value) || 0;
-  return { paid, balance: Math.max(0, total - paid) };
+  return { paid, balance: Math.max(0, total - paid), hospitalPaid: false };
 }
 
 function initDoctorChange() {
@@ -262,8 +263,11 @@ function calcEntry() {
     }
   }
   let bd = document.getElementById('balDisplay');
-  if (document.getElementById('ePayStatus').value === 'paid') {
+  let payStatus = document.getElementById('ePayStatus').value;
+  if (payStatus === 'paid') {
     bd.innerHTML = '<span class="paid-display">Full Paid &#8377;' + total + '</span>';
+  } else if (payStatus === 'hospital') {
+    bd.innerHTML = '<span style="background:#e7f0fd;color:#1e4d8c;padding:3px 8px;border-radius:10px;font-size:12px;font-weight:600">🏥 Hospital owes &#8377;' + total + '</span>';
   } else {
     let bal = Math.max(0, total - (parseFloat(document.getElementById('ePaid').value) || 0));
     bd.innerHTML = '<span class="bal-display">Balance: &#8377;' + bal + '</span>';
@@ -304,6 +308,7 @@ function saveEntry() {
       extra: extra, extraReason: extraReason,
       total,
       paid: payInfo.paid, balance: payInfo.balance,
+      hospitalPaid: payInfo.hospitalPaid,
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
@@ -325,6 +330,7 @@ function saveEntry() {
       extra: extra, extraReason: extraReason,
       total,
       paid: payInfo.paid, balance: payInfo.balance,
+      hospitalPaid: payInfo.hospitalPaid,
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
@@ -392,10 +398,14 @@ function editEntry(id) {
     document.getElementById('eExtraReason').value = e.extraReason || '';
 
     // Payment
-    let isFullPaid = (e.balance || 0) === 0;
-    document.getElementById('ePayStatus').value = isFullPaid ? 'paid' : 'partial';
+    if (e.hospitalPaid) {
+      document.getElementById('ePayStatus').value = 'hospital';
+    } else {
+      let isFullPaid = (e.balance || 0) === 0;
+      document.getElementById('ePayStatus').value = isFullPaid ? 'paid' : 'partial';
+      if (!isFullPaid) document.getElementById('ePaid').value = e.paid || '';
+    }
     togglePayFields();
-    if (!isFullPaid) document.getElementById('ePaid').value = e.paid || '';
 
     // Payment mode
     document.getElementById('ePayMode').value = e.paymentMode || 'Cash';
@@ -454,7 +464,10 @@ function refreshSidebar() {
   let rows = dayEntries.map((e, i) => {
     totalAmt += e.total; totalPaid += e.paid;
     let tnames = e.tests.map(t => t.name).join(', ');
-    let st = e.balance > 0 ? '<span class="badge badge-red">&#8377;' + e.balance + '</span>' : '<span class="badge badge-green">Paid</span>';
+    let st;
+    if (e.hospitalPaid) { st = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
+    else if (e.balance > 0) { st = '<span class="badge badge-red">&#8377;' + e.balance + '</span>'; }
+    else { st = '<span class="badge badge-green">Paid</span>'; }
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" title="Pay Balance">&#8377;</button>' : '';
     let editBtn = '<button class="btn btn-xs" onclick="editEntry(\'' + e.id + '\')" title="Edit entry" style="background:var(--accent);color:white;padding:2px 6px;font-size:10px;margin-right:2px">✏️</button>';
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;

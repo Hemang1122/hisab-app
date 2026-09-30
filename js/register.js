@@ -17,7 +17,10 @@ function renderRegister() {
   let rows = filtered.map((e, i) => {
     totalAmt += e.total; totalPaid += e.paid;
     let tnames = e.tests.map(t => t.name).join(', ');
-    let status = e.balance > 0 ? '<span class="badge badge-red">₹' + e.balance + ' Baaki</span>' : '<span class="badge badge-green">Paid</span>';
+    let status;
+    if (e.hospitalPaid) { status = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
+    else if (e.balance > 0) { status = '<span class="badge badge-red">₹' + e.balance + ' Baaki</span>'; }
+    else { status = '<span class="badge badge-green">Paid</span>'; }
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" style="margin-right:4px">₹ Pay</button>' : '';
     let liveDoc = e.doctorId && e.doctorId !== '__self__' ? doctors.find(d => d.id === e.doctorId) : null;
     let docName = liveDoc ? liveDoc.name : (e.doctorName || '-');

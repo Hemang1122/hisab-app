@@ -465,6 +465,12 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
   background:var(--due-bg); color:var(--due); padding:2px 8px; border-radius:10px;
   font-size:10px; font-weight:600;
 }
+.inv-status-hospital {
+  background:#e7f0fd; color:#1e4d8c; padding:2px 8px; border-radius:10px;
+  font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;
+}
+.inv-sum-hospital .inv-sum-value { color:#1e4d8c; }
+.inv-sum-hospital { border-left:3px solid #1e4d8c; }
 
 .inv-summary {
   display:flex; flex-wrap:wrap; gap:12px; padding:20px 24px; background:var(--n50);
