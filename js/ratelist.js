@@ -102,8 +102,9 @@ function renderRateLists() {
     return '<div class="card"><div class="flex-between"><div><b>' + rl.name + '</b><br><small>Doctors: ' + docStr + '</small></div><div>' +
       '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit All</button> ' +
       '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')">Delete</button></div></div>' +
-      '<div style="margin-top:8px"><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
-      '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
+      toolbar +
+      '<div style="margin-top:4px"><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
+      '<div class="rl-tests-wrap" style="display:none;margin-top:6px"><table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
   }).join('');
 }
 
@@ -121,7 +122,17 @@ function toggleRLTests(btn) {
 // Search tests within a rate list
 function searchRLTests(rlId, query) {
   let q = (query || '').toLowerCase();
-  document.querySelectorAll('.rl-test-row[data-rlid="' + rlId + '"]').forEach(row => {
+  // Auto-expand if collapsed
+  let rows = document.querySelectorAll('.rl-test-row[data-rlid="' + rlId + '"]');
+  if (rows.length) {
+    let wrap = rows[0].closest('.rl-tests-wrap');
+    if (wrap && wrap.style.display === 'none') {
+      wrap.style.display = 'block';
+      let toggleBtn = wrap.previousElementSibling;
+      if (toggleBtn) toggleBtn.textContent = toggleBtn.textContent.replace('▶ Show', '▼ Hide');
+    }
+  }
+  rows.forEach(row => {
     row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
   });
 }
