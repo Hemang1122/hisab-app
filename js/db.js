@@ -54,6 +54,150 @@ const SPECIAL_TESTS_FROM_PDF = [
   { name: 'ALBUMIN (ALB) FLUID', rate: 60 }
 ];
 
+// Additional commonly requested clinical lab tests — rate=0, user sets price + split
+const ADDITIONAL_COMMON_TESTS = [
+  // === COAGULATION / HEMATOLOGY ===
+  { name: 'Prothrombin Time (PT)', type: 'normal' },
+  { name: 'Fibrinogen', type: 'normal' },
+  { name: 'Bleeding Time (BT)', type: 'normal' },
+  { name: 'Clotting Time (CT)', type: 'normal' },
+  { name: 'Absolute Eosinophil Count (AEC)', type: 'normal' },
+  { name: 'G6PD (Glucose-6-Phosphate Dehydrogenase)', type: 'special' },
+  { name: 'Sickling Test', type: 'normal' },
+  { name: 'LE Cell Preparation', type: 'normal' },
+  { name: 'Coombs Test - Direct (DCT)', type: 'normal' },
+  { name: 'Coombs Test - Indirect (ICT)', type: 'normal' },
+  { name: 'Antibody Screening', type: 'special' },
+  { name: 'Bone Marrow Aspiration', type: 'special' },
+
+  // === IRON / VITAMIN PANEL ===
+  { name: 'Serum Iron', type: 'normal' },
+  { name: 'TIBC (Total Iron Binding Capacity)', type: 'normal' },
+  { name: 'Ferritin', type: 'normal' },
+  { name: 'Transferrin Saturation', type: 'normal' },
+  { name: 'Folic Acid / Folate', type: 'normal' },
+  { name: 'Vitamin B1 (Thiamine)', type: 'special' },
+  { name: 'Vitamin B6 (Pyridoxine)', type: 'special' },
+
+  // === HORMONES ===
+  { name: 'Insulin - Fasting', type: 'special' },
+  { name: 'Insulin - Post Prandial', type: 'special' },
+  { name: 'C-Peptide', type: 'special' },
+  { name: 'Cortisol (AM)', type: 'special' },
+  { name: 'Cortisol (PM)', type: 'special' },
+  { name: 'ACTH (Adrenocorticotropic Hormone)', type: 'special' },
+  { name: 'Growth Hormone (GH)', type: 'special' },
+  { name: 'Parathyroid Hormone (PTH) - Intact', type: 'special' },
+  { name: 'LH (Luteinizing Hormone)', type: 'special' },
+  { name: 'FSH (Follicle Stimulating Hormone)', type: 'special' },
+  { name: 'Estradiol (E2)', type: 'special' },
+  { name: 'Progesterone', type: 'special' },
+  { name: 'DHEA-S (Dehydroepiandrosterone Sulfate)', type: 'special' },
+  { name: 'AMH (Anti-Mullerian Hormone)', type: 'special' },
+  { name: 'Beta HCG - Quantitative', type: 'special' },
+  { name: 'Free T3 (FT3)', type: 'normal' },
+  { name: 'Free T4 (FT4)', type: 'normal' },
+  { name: 'Anti-TPO (Thyroid Peroxidase Antibody)', type: 'special' },
+  { name: 'Anti-Thyroglobulin Antibody', type: 'special' },
+  { name: 'Thyroglobulin', type: 'special' },
+  { name: 'Aldosterone', type: 'special' },
+  { name: 'Renin', type: 'special' },
+
+  // === ELECTROLYTES / MINERALS ===
+  { name: 'Ionized Calcium', type: 'normal' },
+  { name: 'Magnesium', type: 'normal' },
+  { name: 'Zinc, Serum', type: 'special' },
+
+  // === TUMOR MARKERS ===
+  { name: 'Alpha Feto Protein (AFP)', type: 'special' },
+  { name: 'CEA (Carcinoembryonic Antigen)', type: 'special' },
+  { name: 'CA 125', type: 'special' },
+  { name: 'CA 19-9', type: 'special' },
+  { name: 'CA 15-3', type: 'special' },
+  { name: 'Beta-2 Microglobulin', type: 'special' },
+
+  // === CARDIAC / LIPID EXTENDED ===
+  { name: 'hs-CRP (High Sensitivity CRP)', type: 'special' },
+  { name: 'Troponin T', type: 'special' },
+  { name: 'Lipoprotein(a) - Lp(a)', type: 'special' },
+  { name: 'Apolipoprotein A1', type: 'special' },
+  { name: 'Apolipoprotein B', type: 'special' },
+  { name: 'Direct LDL', type: 'normal' },
+  { name: 'HDL Cholesterol', type: 'normal' },
+  { name: 'LDL Cholesterol', type: 'normal' },
+  { name: 'VLDL', type: 'normal' },
+
+  // === AUTOIMMUNE ===
+  { name: 'Anti-dsDNA', type: 'special' },
+  { name: 'Anti-Ro (SSA)', type: 'special' },
+  { name: 'Anti-La (SSB)', type: 'special' },
+  { name: 'Anti-Sm', type: 'special' },
+  { name: 'Anti-RNP', type: 'special' },
+  { name: 'ENA Profile', type: 'special' },
+  { name: 'C3 Complement', type: 'special' },
+  { name: 'C4 Complement', type: 'special' },
+  { name: 'Immunoglobulin A (IgA)', type: 'special' },
+  { name: 'Immunoglobulin M (IgM)', type: 'special' },
+  { name: 'c-ANCA', type: 'special' },
+  { name: 'p-ANCA', type: 'special' },
+  { name: 'Anti-Phospholipid Antibody', type: 'special' },
+
+  // === INFECTIOUS SEROLOGY ===
+  { name: 'COVID-19 RT-PCR', type: 'special' },
+  { name: 'COVID-19 Rapid Antigen', type: 'normal' },
+  { name: 'COVID-19 Antibody (IgG)', type: 'normal' },
+  { name: 'Malaria Antigen (Rapid)', type: 'normal' },
+  { name: 'Scrub Typhus IgM', type: 'special' },
+  { name: 'H. pylori Antibody', type: 'normal' },
+  { name: 'H. pylori Stool Antigen', type: 'normal' },
+  { name: 'Toxoplasma IgG', type: 'special' },
+  { name: 'Toxoplasma IgM', type: 'special' },
+  { name: 'Rubella IgG', type: 'special' },
+  { name: 'Rubella IgM', type: 'special' },
+  { name: 'CMV IgG', type: 'special' },
+  { name: 'CMV IgM', type: 'special' },
+  { name: 'HSV 1 & 2 IgG', type: 'special' },
+  { name: 'HSV 1 & 2 IgM', type: 'special' },
+  { name: 'EBV Panel', type: 'special' },
+  { name: 'Anti-HBs (Hepatitis B Surface Antibody)', type: 'normal' },
+  { name: 'HBeAg (Hepatitis B e Antigen)', type: 'normal' },
+  { name: 'Anti-HBe', type: 'normal' },
+  { name: 'HCV RNA - Quantitative', type: 'special' },
+  { name: 'HIV Viral Load', type: 'special' },
+  { name: 'GeneXpert MTB/RIF', type: 'special' },
+
+  // === MICROBIOLOGY / CULTURES ===
+  { name: 'Stool Culture & Sensitivity', type: 'normal' },
+  { name: 'Throat Swab Culture', type: 'normal' },
+  { name: 'Wound Swab Culture', type: 'normal' },
+  { name: 'HVS Culture (High Vaginal Swab)', type: 'normal' },
+  { name: 'Ear Swab Culture', type: 'normal' },
+  { name: 'Nasal Swab Culture', type: 'normal' },
+  { name: 'Fungal Culture', type: 'normal' },
+  { name: 'India Ink Preparation', type: 'normal' },
+
+  // === CYTOLOGY / HISTOPATH ===
+  { name: 'FNAC (Fine Needle Aspiration Cytology)', type: 'special' },
+  { name: 'Pap Smear', type: 'normal' },
+  { name: 'Cell Block', type: 'special' },
+  { name: 'Frozen Section', type: 'special' },
+  { name: 'IHC (Immunohistochemistry) - per marker', type: 'special' },
+
+  // === 24 HOUR URINE ===
+  { name: '24 Hour Urine Protein', type: 'normal' },
+  { name: '24 Hour Urine Creatinine', type: 'normal' },
+  { name: '24 Hour Urine Micro Albumin', type: 'normal' },
+  { name: 'Urine Bence Jones Protein', type: 'special' },
+
+  // === OTHERS ===
+  { name: 'Ammonia (Serum)', type: 'special' },
+  { name: 'Lactate (Serum)', type: 'normal' },
+  { name: 'Osmolality (Serum)', type: 'special' },
+  { name: 'Osmolality (Urine)', type: 'special' },
+  { name: 'Semen Fructose', type: 'normal' },
+  { name: 'Karyotyping', type: 'special' }
+];
+
 
 // Setup SQL for Supabase (shown in setup modal)
 const SETUP_SQL = `-- Run this in Supabase SQL Editor (one time setup)
@@ -306,12 +450,21 @@ function migrateData() {
     SPECIAL_TESTS_FROM_PDF.forEach(t => {
       if (!existingNames.has(t.name.toLowerCase().trim())) {
         rl.tests.push({ name: t.name, rate: t.rate, type: 'special' });
+        existingNames.add(t.name.toLowerCase().trim());
+        added++;
+      }
+    });
+    // Also seed additional commonly requested tests (rate=0, user fills price/split)
+    ADDITIONAL_COMMON_TESTS.forEach(t => {
+      if (!existingNames.has(t.name.toLowerCase().trim())) {
+        rl.tests.push({ name: t.name, rate: 0, type: t.type || 'normal' });
+        existingNames.add(t.name.toLowerCase().trim());
         added++;
       }
     });
     if (added > 0) {
       changed = true;
-      console.log('Added ' + added + ' special tests to rate list');
+      console.log('Added ' + added + ' tests to rate list');
     }
   }
 
