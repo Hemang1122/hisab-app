@@ -47,7 +47,7 @@ let rateLists = LS.get('rateLists', []);
 let doctors = LS.get('doctors', []);
 let collectors = LS.get('collectors', []);
 let entries = LS.get('entries', []);
-let settings = LS.get('settings', { revPassword: 'ANITA@1234' });
+let settings = LS.get('settings', { revPassword: 'Anita@1234' });
 
 // ========== SEED DATA (runs once if no doctors exist) ==========
 function seedDefaultData() {
