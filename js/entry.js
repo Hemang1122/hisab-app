@@ -58,7 +58,7 @@ function loadTestCheckboxes(rl, docPercent) {
     let incomplete = !t.rate ? ' test-incomplete' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '" tabindex="0" onkeydown="testRowKeyHandler(event,this)">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
-    '<input type="checkbox" class="test-cb" data-idx="' + i + '" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
+    '<input type="checkbox" class="test-cb" data-idx="' + i + '" tabindex="-1" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
     '<span class="trate">&#8377;' + (t.rate || 0) + '</span></div>';
@@ -100,8 +100,8 @@ function testSearchKeyHandler(event) {
 
 function testRowKeyHandler(event, row) {
   if (event.key === 'Enter' || event.key === ' ') {
-    // Enter/Space on focused row = toggle checkbox, clear search, back to search
     event.preventDefault();
+    event.stopPropagation();
     let cb = row.querySelector('.test-cb');
     if (cb) { cb.checked = !cb.checked; calcEntry(); }
     row.classList.remove('test-row-focused');
@@ -109,20 +109,14 @@ function testRowKeyHandler(event, row) {
     if (s) { s.value = ''; filterTests(); s.focus(); }
   } else if (event.key === 'Tab') {
     event.preventDefault();
+    event.stopPropagation();
     row.classList.remove('test-row-focused');
-    // Find next visible test row; if none, go to discount
-    let allRows = Array.from(document.querySelectorAll('#testCheckboxes .test-row'));
-    let idx = allRows.indexOf(row);
-    let next = null;
-    let dir = event.shiftKey ? -1 : 1;
-    for (let i = idx + dir; i >= 0 && i < allRows.length; i += dir) {
-      if (allRows[i].style.display !== 'none' && !allRows[i].style.display.includes('none')) {
-        next = allRows[i]; break;
-      }
-    }
-    if (next) {
-      next.focus();
-      next.classList.add('test-row-focused');
+    let visibleRows = Array.from(document.querySelectorAll('#testCheckboxes .test-row')).filter(r => r.offsetParent !== null);
+    let idx = visibleRows.indexOf(row);
+    let nextIdx = event.shiftKey ? idx - 1 : idx + 1;
+    if (nextIdx >= 0 && nextIdx < visibleRows.length) {
+      visibleRows[nextIdx].focus();
+      visibleRows[nextIdx].classList.add('test-row-focused');
     } else if (!event.shiftKey) {
       document.getElementById('eDisc').focus();
     } else {
