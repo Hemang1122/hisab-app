@@ -87,6 +87,33 @@ function selectFirstVisibleTest() {
   if (s) { s.value = ''; filterTests(); s.focus(); }
 }
 
+// Reload tests when returning to entry tab (e.g. after editing rate list)
+function reloadEntryTests() {
+  let docVal = document.getElementById('eDoctor').value;
+  if (!docVal) return;
+  // Remember checked test indices
+  let checkedIdxs = [];
+  document.querySelectorAll('.test-cb:checked').forEach(cb => checkedIdxs.push(parseInt(cb.dataset.idx)));
+  let rl;
+  if (docVal === '__self__') {
+    let rlId = document.getElementById('eDoctor').dataset.selfRlId;
+    rl = rateLists.find(r => r.id === rlId);
+  } else {
+    let doc = doctors.find(d => d.id === docVal);
+    if (doc && doc.rateListId) rl = rateLists.find(r => r.id === doc.rateListId);
+  }
+  if (!rl) return;
+  loadTestCheckboxes(rl);
+  // Re-check previously selected tests
+  if (checkedIdxs.length) {
+    checkedIdxs.forEach(idx => {
+      let cb = document.querySelector('.test-cb[data-idx="' + idx + '"]');
+      if (cb) cb.checked = true;
+    });
+    calcEntry();
+  }
+}
+
 // Apply rate list for Self (Walk-in) patients
 function applySelfRL() {
   let rlId = document.getElementById('selfRLSelect').value;
@@ -129,6 +156,19 @@ function calcEntry() {
   document.getElementById('eDiscAmt').textContent = discAmt;
   document.getElementById('eTotal').textContent = total;
   document.getElementById('entryTotals').style.display = tests.length ? 'flex' : 'none';
+  // Selected tests summary
+  let sumEl = document.getElementById('selectedTestsSummary');
+  if (sumEl) {
+    if (tests.length) {
+      sumEl.style.display = 'block';
+      sumEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">' +
+        tests.map(t => '<span style="background:var(--accent);color:white;padding:2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:3px">' + t.name + ' <small>₹' + t.rate + '</small></span>').join('') +
+        '</div>';
+    } else {
+      sumEl.style.display = 'none';
+      sumEl.innerHTML = '';
+    }
+  }
   let bd = document.getElementById('balDisplay');
   if (document.getElementById('ePayStatus').value === 'paid') {
     bd.innerHTML = '<span class="paid-display">Full Paid &#8377;' + total + '</span>';

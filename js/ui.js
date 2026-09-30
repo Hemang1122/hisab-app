@@ -77,7 +77,7 @@ function showTab(t, skipHistory) {
   if (t === 'register') renderRegister();
   if (t === 'ratelist') renderRateLists();
   if (t === 'doctors') renderDoctors();
-  if (t === 'entry') refreshSidebar();
+  if (t === 'entry') { reloadEntryTests(); refreshSidebar(); }
 }
 
 // Browser back/forward button support
