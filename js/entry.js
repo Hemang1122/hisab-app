@@ -1,5 +1,7 @@
 // ========== ENTRY FORM ==========
 
+let editingEntryId = null;
+
 function togglePayFields() {
   let status = document.getElementById('ePayStatus').value;
   let paidInput = document.getElementById('ePaid');
@@ -239,22 +241,49 @@ function saveEntry() {
   let total = Math.max(0, subtotal - discAmt + extra);
   let payInfo = getPaymentInfo();
   let docName = isSelf ? 'Self' : doctors.find(d => d.id === docVal).name;
-  let entry = {
-    id: uid(),
-    date: getDateFromPicker('e'),
-    doctorId: docVal, doctorName: docName, name,
-    age: '', gender: '',
-    tests, subtotal, discount: discAmt,
-    extra: extra, extraReason: extraReason,
-    total,
-    paid: payInfo.paid, balance: payInfo.balance,
-    paymentMode: document.getElementById('ePayMode').value,
-    collectorId: document.getElementById('eCollector').value,
-    collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
-    created: new Date().toISOString()
-  };
-  entries.push(entry);
-  saveEntry_db(entry);
+
+  if (editingEntryId) {
+    // UPDATE existing entry — preserve id, created, keep everything else fresh
+    let idx = entries.findIndex(x => x.id === editingEntryId);
+    if (idx < 0) { editingEntryId = null; return alert('Entry not found — reload karo.'); }
+    let existing = entries[idx];
+    let updated = {
+      ...existing,
+      date: getDateFromPicker('e'),
+      doctorId: docVal, doctorName: docName, name,
+      tests, subtotal, discount: discAmt,
+      extra: extra, extraReason: extraReason,
+      total,
+      paid: payInfo.paid, balance: payInfo.balance,
+      paymentMode: document.getElementById('ePayMode').value,
+      collectorId: document.getElementById('eCollector').value,
+      collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
+      updated: new Date().toISOString()
+    };
+    entries[idx] = updated;
+    saveLocal();
+    if (dbReady) sbSave('entries', updated.id, updated);
+    editingEntryId = null;
+    updateSaveButtonLabel();
+  } else {
+    // NEW entry
+    let entry = {
+      id: uid(),
+      date: getDateFromPicker('e'),
+      doctorId: docVal, doctorName: docName, name,
+      age: '', gender: '',
+      tests, subtotal, discount: discAmt,
+      extra: extra, extraReason: extraReason,
+      total,
+      paid: payInfo.paid, balance: payInfo.balance,
+      paymentMode: document.getElementById('ePayMode').value,
+      collectorId: document.getElementById('eCollector').value,
+      collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
+      created: new Date().toISOString()
+    };
+    entries.push(entry);
+    saveEntry_db(entry);
+  }
   // Reset form
   document.getElementById('eName').value = '';
   document.getElementById('eDisc').value = '';
@@ -267,6 +296,100 @@ function saveEntry() {
   calcEntry();
   refreshSidebar();
   document.getElementById('eName').focus();
+}
+
+function editEntry(id) {
+  let e = entries.find(x => x.id === id);
+  if (!e) return alert('Entry not found');
+  editingEntryId = id;
+
+  // Set date picker — split YYYY-MM-DD -> month/day dropdowns
+  let dateParts = (e.date || '').split('-');
+  if (dateParts.length === 3) {
+    let mSel = document.getElementById('eMonth');
+    let dSel = document.getElementById('eDay');
+    if (mSel) mSel.value = dateParts[0] + '-' + dateParts[1];
+    // updateDateDropdown fills eDay based on month, then set day
+    if (typeof updateDateDropdown === 'function') updateDateDropdown('e');
+    if (dSel) dSel.value = dateParts[2];
+  }
+
+  // Set doctor — triggers change handler that loads test checkboxes
+  let dSelect = document.getElementById('eDoctor');
+  dSelect.value = e.doctorId || '';
+  dSelect.dispatchEvent(new Event('change'));
+
+  // Set patient name
+  document.getElementById('eName').value = e.name || '';
+
+  // After a small tick (test checkboxes are rendered synchronously by change handler,
+  // but be safe), tick the matching tests by name
+  setTimeout(() => {
+    let rl = getMasterRL();
+    if (!rl) return;
+    let entryTestNames = new Set(e.tests.map(t => t.name.toLowerCase()));
+    document.querySelectorAll('.test-cb').forEach(cb => {
+      let idx = parseInt(cb.dataset.idx);
+      let t = rl.tests[idx];
+      if (t && entryTestNames.has(t.name.toLowerCase())) cb.checked = true;
+    });
+
+    // Discount
+    document.getElementById('eDisc').value = e.discount || '';
+    document.getElementById('eDiscType').value = 'rs';
+
+    // Extra
+    document.getElementById('eExtra').value = e.extra || '';
+    document.getElementById('eExtraReason').value = e.extraReason || '';
+
+    // Payment
+    let isFullPaid = (e.balance || 0) === 0;
+    document.getElementById('ePayStatus').value = isFullPaid ? 'paid' : 'partial';
+    togglePayFields();
+    if (!isFullPaid) document.getElementById('ePaid').value = e.paid || '';
+
+    // Payment mode
+    document.getElementById('ePayMode').value = e.paymentMode || 'Cash';
+
+    // Collector
+    document.getElementById('eCollector').value = e.collectorId || '';
+
+    calcEntry();
+    updateSaveButtonLabel();
+
+    // Scroll top so user sees the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('eName').focus();
+  }, 50);
+}
+
+function cancelEditEntry() {
+  editingEntryId = null;
+  document.getElementById('eName').value = '';
+  document.getElementById('eDisc').value = '';
+  document.getElementById('eExtra').value = '';
+  document.getElementById('eExtraReason').value = '';
+  document.getElementById('ePaid').value = '';
+  document.getElementById('ePayStatus').value = 'paid';
+  togglePayFields();
+  document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
+  calcEntry();
+  updateSaveButtonLabel();
+}
+
+function updateSaveButtonLabel() {
+  let btn = document.getElementById('saveEntryBtn');
+  let cancelBtn = document.getElementById('cancelEditBtn');
+  let banner = document.getElementById('editBanner');
+  if (editingEntryId) {
+    if (btn) btn.innerHTML = '💾 Update Entry';
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (banner) banner.style.display = 'block';
+  } else {
+    if (btn) btn.innerHTML = '💾 Save Entry';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+  }
 }
 
 // ========== ENTRY SIDEBAR ==========
@@ -284,10 +407,11 @@ function refreshSidebar() {
     let tnames = e.tests.map(t => t.name).join(', ');
     let st = e.balance > 0 ? '<span class="badge badge-red">&#8377;' + e.balance + '</span>' : '<span class="badge badge-green">Paid</span>';
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" title="Pay Balance">&#8377;</button>' : '';
+    let editBtn = '<button class="btn btn-xs" onclick="editEntry(\'' + e.id + '\')" title="Edit entry" style="background:var(--accent);color:white;padding:2px 6px;font-size:10px;margin-right:2px">✏️</button>';
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;
     let docName = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
     return '<tr><td>' + (i + 1) + '</td><td>' + e.name + '</td><td>' + docName + '</td><td style="font-size:11px;max-width:100px">' + tnames + '</td><td>&#8377;' + e.total + '</td><td>' + st + '</td>' +
-      '<td style="white-space:nowrap">' + payBtn + '<button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">&#10005;</button></td></tr>';
+      '<td style="white-space:nowrap">' + editBtn + payBtn + '<button class="del-btn" onclick="deleteEntry(\'' + e.id + '\')">&#10005;</button></td></tr>';
   }).join('');
   c.innerHTML = '<table><tr><th>#</th><th>Naam</th><th>Doctor</th><th>Tests</th><th>Total</th><th>Status</th><th></th></tr>' + rows + '</table>' +
     '<div style="font-size:12px;margin-top:6px;color:var(--gray-500)"><b>' + dayEntries.length + '</b> entries | Total: <b>&#8377;' + totalAmt + '</b> | Paid: <b>&#8377;' + totalPaid + '</b> | Baaki: <b style="color:var(--danger)">&#8377;' + (totalAmt - totalPaid) + '</b></div>';

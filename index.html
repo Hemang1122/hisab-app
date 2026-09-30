@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=26">
+<link rel="stylesheet" href="css/styles.css?v=27">
 </head>
 <body>
 
@@ -49,6 +49,7 @@
 <div class="entry-layout">
 <div class="entry-form">
 <div class="card">
+<div id="editBanner" style="display:none;background:#fff4e6;border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:12px;font-weight:600">✏️ Edit mode — changes will update the existing entry</div>
 <div class="row">
 <div>
 <label>Date</label>
@@ -105,7 +106,8 @@
 <div></div>
 </div>
 <div style="margin-top:10px;text-align:right">
-<button class="btn btn-primary" onclick="saveEntry()">&#128190; Save Entry</button>
+<button id="cancelEditBtn" class="btn btn-secondary" onclick="cancelEditEntry()" style="display:none;margin-right:6px">✕ Cancel Edit</button>
+<button id="saveEntryBtn" class="btn btn-primary" onclick="saveEntry()">&#128190; Save Entry</button>
 </div>
 </div>
 </div>
@@ -299,15 +301,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=26"></script>
-<script src="js/ui.js?v=26"></script>
-<script src="js/ratelist.js?v=26"></script>
-<script src="js/doctors.js?v=26"></script>
-<script src="js/entry.js?v=26"></script>
-<script src="js/register.js?v=26"></script>
-<script src="js/hisab.js?v=26"></script>
-<script src="js/revenue.js?v=26"></script>
-<script src="js/backup.js?v=26"></script>
+<script src="js/db.js?v=27"></script>
+<script src="js/ui.js?v=27"></script>
+<script src="js/ratelist.js?v=27"></script>
+<script src="js/doctors.js?v=27"></script>
+<script src="js/entry.js?v=27"></script>
+<script src="js/register.js?v=27"></script>
+<script src="js/hisab.js?v=27"></script>
+<script src="js/revenue.js?v=27"></script>
+<script src="js/backup.js?v=27"></script>
 
 <!-- Init -->
 <script>
