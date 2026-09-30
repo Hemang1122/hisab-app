@@ -76,17 +76,51 @@ function loadTestCheckboxes(rl, docPercent) {
 }
 
 function filterTests() {
-  let raw = (document.getElementById('testSearch').value || '').toLowerCase().trim();
-  // Normalize: strip punctuation, collapse whitespace
+  let searchEl = document.getElementById('testSearch');
+  let raw = (searchEl.value || '').trim();
   function norm(s) { return s.toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
   let q = norm(raw);
-  // Split query into words — each must appear as substring in the normalized test name
   let words = q.split(' ').filter(w => w.length > 0);
+  let visibleCount = 0;
   document.querySelectorAll('#testCheckboxes .test-row').forEach(row => {
     let target = norm(row.dataset.testname);
     let match = words.length === 0 || words.every(w => target.includes(w));
     row.style.display = match ? '' : 'none';
+    if (match) visibleCount++;
   });
+  // Show/hide "+ Add" prompt when no matches
+  let addBox = document.getElementById('addTestFromSearch');
+  if (!addBox) {
+    addBox = document.createElement('div');
+    addBox.id = 'addTestFromSearch';
+    addBox.style.cssText = 'display:none;padding:10px;background:#fff8ee;border:1px dashed var(--accent);border-radius:6px;margin:6px 0;text-align:center;cursor:pointer;font-size:13px';
+    // Insert right after the search input
+    if (searchEl && searchEl.parentNode) searchEl.parentNode.insertBefore(addBox, searchEl.nextSibling);
+  }
+  if (raw.length > 0 && visibleCount === 0) {
+    addBox.innerHTML = '➕ <b>Add "' + raw + '"</b> as a new test <small style="color:#888">(click to enter rate & split)</small>';
+    addBox.onclick = () => addNewTestFromSearch(raw);
+    addBox.style.display = 'block';
+  } else {
+    addBox.style.display = 'none';
+  }
+}
+
+function addNewTestFromSearch(name) {
+  let rl = getMasterRL();
+  if (!rl) return alert('Rate list not found');
+  // Append a new test with rate=0 and open Quick Edit modal
+  rl.tests.push({ name: name, rate: 0, type: 'normal' });
+  let newIdx = rl.tests.length - 1;
+  saveAll();
+  if (dbReady) sbSave('rate_lists', rl.id, rl);
+  reloadEntryTests();
+  // Clear search so we see all tests
+  let s = document.getElementById('testSearch');
+  if (s) s.value = '';
+  filterTests();
+  // Open Quick Edit for this new test so user fills rate + split
+  openQuickTestEdit(newIdx);
 }
 
 function testSearchKeyHandler(event) {
@@ -208,9 +242,15 @@ function saveQuickTestEdit() {
   }
   saveAll();
   if (dbReady) sbSave('rate_lists', rl.id, rl);
+  let editedIdx = quickEditTestIdx;
   closeModal('quickTestModal');
   quickEditTestIdx = null;
   reloadEntryTests();
+  // Auto-tick the edited test after reload (so user sees it in the entry)
+  setTimeout(() => {
+    let cb = document.querySelector('.test-cb[data-idx="' + editedIdx + '"]');
+    if (cb) { cb.checked = true; calcEntry(); }
+  }, 30);
   if (typeof renderRateLists === 'function') renderRateLists();
 }
 
@@ -373,6 +413,7 @@ function editEntry(id) {
   let dSelect = document.getElementById('eDoctor');
   dSelect.value = e.doctorId || '';
   dSelect.dispatchEvent(new Event('change'));
+  if (typeof refreshDocComboLabel === 'function') refreshDocComboLabel();
 
   // Set patient name
   document.getElementById('eName').value = e.name || '';
@@ -481,7 +522,7 @@ function refreshSidebar() {
 
 // ========== KEYBOARD FLOW ==========
 function initKeyboardFlow() {
-  const FIELD_ORDER = ['eDoctor', 'eName', 'eDisc', 'eDiscType', 'eExtra', 'eExtraReason', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
+  const FIELD_ORDER = ['eDoctorSearch', 'eName', 'eDisc', 'eDiscType', 'eExtra', 'eExtraReason', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
   function nextField(currentId) {
     let idx = FIELD_ORDER.indexOf(currentId);
     if (idx < 0) return;

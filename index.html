@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=29">
+<link rel="stylesheet" href="css/styles.css?v=30">
 </head>
 <body>
 
@@ -59,7 +59,11 @@
 </div>
 </div>
 <div><label>Doctor / Hospital</label>
-<select id="eDoctor"><option value="">-- Select --</option><option value="__self__">Self (Walk-in)</option></select></div>
+<div class="doc-combo" style="position:relative">
+<input id="eDoctorSearch" type="text" placeholder="🔍 Type doctor/hospital name..." autocomplete="off" oninput="filterDocCombo()" onfocus="showDocCombo()" onkeydown="docComboKey(event)">
+<div id="eDoctorDropdown" class="doc-combo-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--n200);border-radius:6px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-top:2px"></div>
+<select id="eDoctor" style="display:none"><option value="">-- Select --</option><option value="__self__">Self (Walk-in)</option></select>
+</div></div>
 </div>
 <div class="row">
 <div><label>Patient Ka Naam</label><input id="eName" placeholder="Patient name"></div>
@@ -340,15 +344,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=29"></script>
-<script src="js/ui.js?v=29"></script>
-<script src="js/ratelist.js?v=29"></script>
-<script src="js/doctors.js?v=29"></script>
-<script src="js/entry.js?v=29"></script>
-<script src="js/register.js?v=29"></script>
-<script src="js/hisab.js?v=29"></script>
-<script src="js/revenue.js?v=29"></script>
-<script src="js/backup.js?v=29"></script>
+<script src="js/db.js?v=30"></script>
+<script src="js/ui.js?v=30"></script>
+<script src="js/ratelist.js?v=30"></script>
+<script src="js/doctors.js?v=30"></script>
+<script src="js/entry.js?v=30"></script>
+<script src="js/register.js?v=30"></script>
+<script src="js/hisab.js?v=30"></script>
+<script src="js/revenue.js?v=30"></script>
+<script src="js/backup.js?v=30"></script>
 
 <!-- Init -->
 <script>

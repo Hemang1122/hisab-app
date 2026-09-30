@@ -106,6 +106,86 @@ function saveRevPassword() {
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 // ========== DROPDOWNS ==========
+// ========== DOCTOR COMBOBOX (searchable) ==========
+function refreshDocComboLabel() {
+  // Sync visible input to hidden select's value
+  let sel = document.getElementById('eDoctor');
+  let inp = document.getElementById('eDoctorSearch');
+  if (!sel || !inp) return;
+  if (!sel.value) { inp.value = ''; return; }
+  if (sel.value === '__self__') { inp.value = 'Self (Walk-in)'; return; }
+  let d = doctors.find(x => x.id === sel.value);
+  inp.value = d ? d.name : '';
+}
+
+function showDocCombo() {
+  let dd = document.getElementById('eDoctorDropdown');
+  if (!dd) return;
+  filterDocCombo();
+  dd.style.display = 'block';
+}
+
+function hideDocCombo() {
+  let dd = document.getElementById('eDoctorDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  let combo = document.querySelector('.doc-combo');
+  if (combo && !combo.contains(e.target)) hideDocCombo();
+});
+
+function filterDocCombo() {
+  let dd = document.getElementById('eDoctorDropdown');
+  let inp = document.getElementById('eDoctorSearch');
+  if (!dd || !inp) return;
+  let raw = inp.value.toLowerCase().trim();
+  function norm(s) { return (s || '').toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let words = norm(raw).split(' ').filter(w => w.length > 0);
+  let items = [{ id: '__self__', name: 'Self (Walk-in)', isSelf: true }].concat(doctors);
+  let matches = items.filter(d => {
+    let t = norm(d.name);
+    return words.length === 0 || words.every(w => t.includes(w));
+  });
+  if (!matches.length) {
+    dd.innerHTML = '<div style="padding:10px;color:#888;font-size:12px;text-align:center">No match. Add doctor in "Doctors & Staff" tab.</div>';
+  } else {
+    dd.innerHTML = matches.map(d =>
+      '<div class="doc-combo-item" onmousedown="pickDoc(\'' + d.id + '\')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'\'">' +
+        (d.isSelf ? '<span style="color:#888">🚶 ' + d.name + '</span>' : d.name) +
+      '</div>'
+    ).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function pickDoc(id) {
+  let sel = document.getElementById('eDoctor');
+  if (!sel) return;
+  sel.value = id;
+  sel.dispatchEvent(new Event('change'));
+  refreshDocComboLabel();
+  hideDocCombo();
+  // Move focus to name input
+  let name = document.getElementById('eName');
+  if (name) name.focus();
+}
+
+function docComboKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    // Pick first visible item
+    let first = document.querySelector('#eDoctorDropdown .doc-combo-item');
+    if (first) {
+      let match = first.getAttribute('onmousedown').match(/pickDoc\('([^']+)'\)/);
+      if (match) pickDoc(match[1]);
+    }
+  } else if (e.key === 'Escape') {
+    hideDocCombo();
+  }
+}
+
 function populateDropdowns() {
   let selfOpt = '<option value="__self__">Self (Walk-in)</option>';
   let docOpts = '<option value="">-- Select --</option>' + selfOpt + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
@@ -131,4 +211,5 @@ function populateDropdowns() {
   restore(hDoc, prevHDoc);
   restore(regDoc, prevRegDoc);
   restore(eColl, prevEColl);
+  refreshDocComboLabel();
 }
