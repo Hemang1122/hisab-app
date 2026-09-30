@@ -259,6 +259,9 @@ function inlineEditField(rlId, idx, field, td) {
       t.docShare = Math.round(val * docPct);
       t.labShare = val - t.docShare;
     }
+    // Auto-adjust other share when one share is edited
+    if (field === 'labShare' && t.rate) { t.docShare = t.rate - val; }
+    if (field === 'docShare' && t.rate) { t.labShare = t.rate - val; }
     // Update the row in place instead of full re-render
     let row = td.closest('tr');
     if (row) updateRLRow(row, rl, rlId, idx);

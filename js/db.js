@@ -264,21 +264,30 @@ function seedDefaultData() {
   }
 }
 
-// Sync missing tests from 50-50 into 60-40 (runs every load)
+// Sync 60-40 rate list from 50-50: add missing tests AND fix prices/types to match
 function syncRateLists() {
   let rl5050 = rateLists.find(r => r.id === 'rl_5050');
   let rl6040 = rateLists.find(r => r.id === 'rl_6040');
   if (!rl5050 || !rl6040) return;
-  let existing = new Set(rl6040.tests.map(t => t.name));
-  let added = 0;
-  rl5050.tests.forEach(t => {
-    if (!existing.has(t.name)) {
-      let doc = Math.floor(t.rate * 0.6);
-      rl6040.tests.push({ name: t.name, rate: t.rate, labShare: t.rate - doc, docShare: doc, type: t.type });
-      added++;
+  let changed = false;
+  let existingMap = {};
+  rl6040.tests.forEach((t, i) => { existingMap[t.name] = i; });
+  rl5050.tests.forEach(src => {
+    let doc60 = Math.floor(src.rate * 0.6);
+    let lab40 = src.rate - doc60;
+    if (src.name in existingMap) {
+      // Update price/type if different
+      let t = rl6040.tests[existingMap[src.name]];
+      if (t.rate !== src.rate || t.type !== src.type || t.docShare !== doc60 || t.labShare !== lab40) {
+        t.rate = src.rate; t.type = src.type; t.docShare = doc60; t.labShare = lab40;
+        changed = true;
+      }
+    } else {
+      rl6040.tests.push({ name: src.name, rate: src.rate, labShare: lab40, docShare: doc60, type: src.type });
+      changed = true;
     }
   });
-  if (added) {
+  if (changed) {
     saveLocal();
     if (dbReady) sbSave('rate_lists', rl6040.id, rl6040);
   }
