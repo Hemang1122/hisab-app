@@ -21,51 +21,51 @@ function initDoctorChange() {
   el.addEventListener('change', function () {
     let val = this.value;
     let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
+    let rl = getMasterRL();
 
-    // Handle Self (Walk-in) — auto-load 50-50 rate list
+    // Handle Self (Walk-in) — use master rate list with 50-50
     if (val === '__self__') {
-      let rl5050 = rateLists.find(r => r.name.includes('50-50') || r.name.includes('50 50'));
-      if (rl5050) {
-        document.getElementById('eDoctor').dataset.selfRlId = rl5050.id;
-        loadTestCheckboxes(rl5050);
-      } else if (rateLists.length) {
-        // Fallback: show modal if no 50-50 found
-        let sel = document.getElementById('selfRLSelect');
-        sel.innerHTML = '<option value="">-- Select Rate List --</option>' + rateLists.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
-        document.getElementById('selfRLModal').classList.add('show');
+      if (rl) {
+        loadTestCheckboxes(rl, 50);
+      } else {
+        container.innerHTML = '<div class="empty" style="padding:10px">Rate list nahi mili</div>';
+        rlSpan.textContent = '-';
       }
       return;
     }
 
     let doc = doctors.find(d => d.id === val);
-    if (!doc || !doc.rateListId) {
-      container.innerHTML = '<div class="empty" style="padding:10px">Pehle doctor select karo jisko rate list assigned ho</div>';
+    if (!doc) {
+      container.innerHTML = '<div class="empty" style="padding:10px">Pehle doctor select karo</div>';
       rlSpan.textContent = '-'; return;
     }
-    let rl = rateLists.find(r => r.id === doc.rateListId);
     if (!rl) { container.innerHTML = '<div class="empty" style="padding:10px">Rate list nahi mili</div>'; rlSpan.textContent = '-'; return; }
-    loadTestCheckboxes(rl);
+    let docPct = doc.docPercent != null ? doc.docPercent : 50;
+    loadTestCheckboxes(rl, docPct);
   });
 }
 
-function loadTestCheckboxes(rl) {
+function loadTestCheckboxes(rl, docPercent) {
   let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
-  rlSpan.textContent = rl.name;
+  let labPct = 100 - docPercent;
+  rlSpan.textContent = rl.name + ' (Doc ' + docPercent + '% / Lab ' + labPct + '%)';
   if (!rl.tests.length) {
     container.innerHTML = '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
     calcEntry(); return;
   }
   let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter/Tab to select)" oninput="filterTests()" onkeydown="testSearchKeyHandler(event)" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
   let testsHtml = rl.tests.map((t, i) => {
-    let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' test-incomplete' : '';
+    let incomplete = !t.rate ? ' test-incomplete' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '" tabindex="0" onkeydown="testRowKeyHandler(event,this)">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
-    '<input type="checkbox" class="test-cb" data-idx="' + i + '" data-rlid="' + rl.id + '" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
+    '<input type="checkbox" class="test-cb" data-idx="' + i + '" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
     '<span class="trate">&#8377;' + (t.rate || 0) + '</span></div>';
   }).join('');
   container.innerHTML = searchHtml + testsHtml;
+  // Store current docPercent for use in getSelectedTests
+  container.dataset.docPercent = docPercent;
   calcEntry();
 }
 
@@ -111,16 +111,10 @@ function reloadEntryTests() {
   // Remember checked test indices
   let checkedIdxs = [];
   document.querySelectorAll('.test-cb:checked').forEach(cb => checkedIdxs.push(parseInt(cb.dataset.idx)));
-  let rl;
-  if (docVal === '__self__') {
-    let rlId = document.getElementById('eDoctor').dataset.selfRlId;
-    rl = rateLists.find(r => r.id === rlId);
-  } else {
-    let doc = doctors.find(d => d.id === docVal);
-    if (doc && doc.rateListId) rl = rateLists.find(r => r.id === doc.rateListId);
-  }
+  let rl = getMasterRL();
   if (!rl) return;
-  loadTestCheckboxes(rl);
+  let docPct = getDocPercent(docVal);
+  loadTestCheckboxes(rl, docPct);
   // Re-check previously selected tests
   if (checkedIdxs.length) {
     checkedIdxs.forEach(idx => {
@@ -131,33 +125,27 @@ function reloadEntryTests() {
   }
 }
 
-// Apply rate list for Self (Walk-in) patients
+// Apply rate list for Self (Walk-in) patients — no longer needs modal
 function applySelfRL() {
-  let rlId = document.getElementById('selfRLSelect').value;
-  if (!rlId) return alert('Rate list select karo!');
-  let rl = rateLists.find(r => r.id === rlId);
-  if (!rl) return alert('Rate list nahi mili!');
   closeModal('selfRLModal');
-  // Store selected RL id for self patient
-  document.getElementById('eDoctor').dataset.selfRlId = rlId;
-  loadTestCheckboxes(rl);
+  let rl = getMasterRL();
+  if (!rl) return alert('Rate list nahi mili!');
+  loadTestCheckboxes(rl, 50);
 }
 
 function getSelectedTests() {
-  let docVal = document.getElementById('eDoctor').value;
-  let rl;
-  if (docVal === '__self__') {
-    let rlId = document.getElementById('eDoctor').dataset.selfRlId;
-    rl = rateLists.find(r => r.id === rlId);
-  } else {
-    let doc = doctors.find(d => d.id === docVal);
-    if (!doc || !doc.rateListId) return [];
-    rl = rateLists.find(r => r.id === doc.rateListId);
-  }
+  let rl = getMasterRL();
   if (!rl) return [];
+  let container = document.getElementById('testCheckboxes');
+  let docPercent = parseInt(container.dataset.docPercent) || 50;
   let selected = [];
   document.querySelectorAll('.test-cb:checked').forEach(cb => {
-    let idx = parseInt(cb.dataset.idx); if (rl.tests[idx]) selected.push({ ...rl.tests[idx] });
+    let idx = parseInt(cb.dataset.idx);
+    if (rl.tests[idx]) {
+      let t = rl.tests[idx];
+      let shares = calcShares(t.rate, docPercent);
+      selected.push({ name: t.name, rate: t.rate, type: t.type, labShare: shares.labShare, docShare: shares.docShare });
+    }
   });
   return selected;
 }
@@ -278,11 +266,9 @@ function initKeyboardFlow() {
     if (!el) return;
     el.addEventListener('keydown', function (ev) {
       if (ev.key === 'Enter') {
-        // For select dropdowns: first Enter opens it, second Enter (after picking) moves on
         if (el.tagName === 'SELECT' && !el.dataset.opened) {
           ev.preventDefault();
           el.dataset.opened = '1';
-          // showPicker opens native dropdown on supported browsers
           if (typeof el.showPicker === 'function') { try { el.showPicker(); } catch(e){} }
           return;
         }
@@ -291,7 +277,6 @@ function initKeyboardFlow() {
         nextField(id);
       }
     });
-    // Reset opened flag when selection changes
     if (el.tagName === 'SELECT') {
       el.addEventListener('change', function() { delete el.dataset.opened; });
     }

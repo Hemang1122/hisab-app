@@ -4,15 +4,13 @@ let editingDoc = null;
 
 function openDocModal(id) {
   editingDoc = id || null;
-  let sel = document.getElementById('docRLSelect');
-  sel.innerHTML = '<option value="">-- Select Rate List --</option>' + rateLists.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
   if (id) {
     let d = doctors.find(x => x.id === id);
     document.getElementById('docNameInput').value = d.name;
-    sel.value = d.rateListId || '';
+    document.getElementById('docSplitInput').value = d.docPercent != null ? d.docPercent : 50;
   } else {
     document.getElementById('docNameInput').value = '';
-    sel.value = '';
+    document.getElementById('docSplitInput').value = 50;
   }
   document.getElementById('docModal').classList.add('show');
 }
@@ -20,9 +18,15 @@ function openDocModal(id) {
 function saveDoctor() {
   let name = document.getElementById('docNameInput').value.trim();
   if (!name) return alert('Doctor ka naam daalo!');
-  let rlId = document.getElementById('docRLSelect').value;
-  if (editingDoc) { let d = doctors.find(x => x.id === editingDoc); d.name = name; d.rateListId = rlId; }
-  else doctors.push({ id: uid(), name, rateListId: rlId });
+  let docPercent = parseInt(document.getElementById('docSplitInput').value) || 50;
+  if (docPercent < 0 || docPercent > 100) return alert('Split 0-100 ke beech hona chahiye!');
+  if (editingDoc) {
+    let d = doctors.find(x => x.id === editingDoc);
+    d.name = name;
+    d.docPercent = docPercent;
+  } else {
+    doctors.push({ id: uid(), name, docPercent });
+  }
   saveAll(); closeModal('docModal'); renderDoctors(); populateDropdowns();
 }
 
@@ -31,8 +35,9 @@ function renderDoctors() {
   if (!c) return;
   if (!doctors.length) { c.innerHTML = '<div class="empty">Koi doctor add nahi hua.</div>'; return; }
   c.innerHTML = doctors.map(d => {
-    let rl = rateLists.find(r => r.id === d.rateListId);
-    return '<div class="card flex-between"><div><b>' + d.name + '</b><br><small style="color:#777">Rate List: ' + (rl ? rl.name : 'Not assigned') + '</small></div><div>' +
+    let pct = d.docPercent != null ? d.docPercent : 50;
+    let labPct = 100 - pct;
+    return '<div class="card flex-between"><div><b>' + d.name + '</b><br><small style="color:#777">Split: Doctor ' + pct + '% / Lab ' + labPct + '%</small></div><div>' +
       '<button class="btn btn-sm btn-primary" onclick="openDocModal(\'' + d.id + '\')">Edit</button> ' +
       '<button class="btn btn-sm btn-danger" onclick="deleteDoc(\'' + d.id + '\')">Delete</button></div></div>';
   }).join('');

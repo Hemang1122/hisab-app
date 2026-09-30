@@ -161,7 +161,7 @@
 <div id="tab-ratelist" class="tab">
 <div class="section-header">
 <div style="display:flex;align-items:center;gap:8px"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#128196; Rate Lists</h2></div>
-<button class="btn btn-primary no-print" onclick="openRLModal()">+ Nayi Rate List</button>
+<button class="btn btn-primary no-print" onclick="openRLModal(getMasterRL()?getMasterRL().id:null)">✏️ Edit Rate List</button>
 </div>
 <div id="rateListsView"></div>
 </div>
@@ -227,8 +227,6 @@
 <h3 id="rlModalTitle">Nayi Rate List</h3>
 <label>Rate List Ka Naam</label>
 <input id="rlNameInput" placeholder="e.g. Rate List 1">
-<label style="margin-top:8px">Ye Rate List Kin Doctors Ko Assign Karo</label>
-<div id="rlDoctorCheckboxes" style="max-height:100px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius);padding:6px;margin-bottom:6px"></div>
 <div style="margin:8px 0">
 <button class="btn btn-sm btn-secondary" onclick="addRLTest()">+ Test Add Karo</button>
 </div>
@@ -246,8 +244,12 @@
 <h3>Naya Doctor / Hospital</h3>
 <label>Naam</label>
 <input id="docNameInput" placeholder="Dr. XYZ / Hospital Name">
-<label>Rate List Assign Karo</label>
-<select id="docRLSelect"><option value="">-- Select Rate List --</option></select>
+<label style="margin-top:8px">Doctor Split % (Doctor ka share)</label>
+<div style="display:flex;align-items:center;gap:8px">
+<input id="docSplitInput" type="number" min="0" max="100" value="50" style="width:80px" oninput="let v=parseInt(this.value)||0;let s=document.getElementById('docSplitPreview');let l=document.getElementById('docLabPreview');if(s)s.textContent=v;if(l)l.textContent=100-v">
+<small>Doctor: <b id="docSplitPreview">50</b>% / Lab: <b id="docLabPreview">50</b>%</small>
+</div>
+<small style="color:#777">e.g. 50 = 50-50 split, 60 = 60-40 (doctor gets more)</small>
 <div style="margin-top:12px;display:flex;gap:8px">
 <button class="btn btn-primary" onclick="saveDoctor()">Save</button>
 <button class="btn btn-secondary" onclick="closeModal('docModal')">Cancel</button>
@@ -289,7 +291,7 @@
 <script>
 function init() {
   seedDefaultData();
-  syncRateLists();
+  migrateData();
   initDatePicker('e');
   initDatePicker('reg');
   let d = todayStr();

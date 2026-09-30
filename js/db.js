@@ -53,196 +53,113 @@ let settings = LS.get('settings', { revPassword: 'ANITA@1234' });
 function seedDefaultData() {
   if (doctors.length > 0) return; // Already has data
 
-  // 50-50 rate list — actual rates from lab backup
+  // ONE fixed master rate list — just name, rate, type (no labShare/docShare)
   rateLists = [
     {
-      id: 'rl_5050', name: 'Standard 50-50',
+      id: 'rl_master', name: 'SBCL Master Rate List',
       tests: [
-        { name: 'CBC (Complete Blood Count)', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'ESR', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Blood Group & Rh', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'BT CT (Bleeding/Clotting Time)', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'Peripheral Smear', rate: 850, labShare: 225, docShare: 225, type: 'special' },
-        { name: 'Platelet Count', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Reticulocyte Count', rate: 800, labShare: 200, docShare: 200, type: 'normal' },
-        { name: 'MP (Malaria Parasite)', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'HbA1c (Glycated Hb)', rate: 550, labShare: 100, docShare: 100, type: 'special' },
-        { name: 'BSF (Blood Sugar Fasting)', rate: 50, labShare: 25, docShare: 25, type: 'normal' },
-        { name: 'BSPP (Blood Sugar Post Prandial)', rate: 50, labShare: 25, docShare: 25, type: 'normal' },
-        { name: 'RBS (Random Blood Sugar)', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Urea', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'Creatinine', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'Uric Acid', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'Cholesterol', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'Triglycerides', rate: 200, labShare: 100, docShare: 100, type: 'normal' },
-        { name: 'SGOT (AST)', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'SGPT (ALT)', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'Albumin', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Total Protein', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Bilirubin (Total/Direct)', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'Alk Phosphatase', rate: 250, labShare: 125, docShare: 125, type: 'normal' },
-        { name: 'Calcium', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'Phosphorous', rate: 500, labShare: 250, docShare: 250, type: 'special' },
-        { name: 'GGT', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Amylase', rate: 550, labShare: 275, docShare: 275, type: 'special' },
-        { name: 'Lipase', rate: 900, labShare: 450, docShare: 450, type: 'special' },
-        { name: 'CPK Total', rate: 900, labShare: 450, docShare: 450, type: 'special' },
-        { name: 'CPK-MB', rate: 900, labShare: 450, docShare: 450, type: 'special' },
-        { name: 'Electrolyte (Na/K/Cl)', rate: 500, labShare: 250, docShare: 250, type: 'special' },
-        { name: 'LDH', rate: 600, labShare: 300, docShare: 300, type: 'special' },
-        { name: 'Lipid Profile', rate: 500, labShare: 250, docShare: 250, type: 'normal' },
-        { name: 'LFT (Liver Function Test)', rate: 500, labShare: 250, docShare: 250, type: 'normal' },
-        { name: 'RFT (Renal Function Test)', rate: 1200, labShare: 600, docShare: 600, type: 'normal' },
-        { name: 'Thyroid Profile (T3/T4/TSH)', rate: 500, labShare: 150, docShare: 149, type: 'special' },
-        { name: 'KFT (Kidney Function Test)', rate: 1000, labShare: 500, docShare: 500, type: 'normal' },
-        { name: 'Widal Test', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'VDRL', rate: 350, labShare: 175, docShare: 175, type: 'normal' },
-        { name: 'RA Factor', rate: 400, labShare: 200, docShare: 200, type: 'normal' },
-        { name: 'ASO Titre', rate: 800, labShare: 400, docShare: 400, type: 'normal' },
-        { name: 'RA + AST (Combined)', rate: 400, labShare: 200, docShare: 200, type: 'normal' },
-        { name: 'CRP', rate: 500, labShare: 250, docShare: 250, type: 'normal' },
-        { name: 'HBsAg', rate: 450, labShare: 225, docShare: 225, type: 'normal' },
-        { name: 'HCV', rate: 650, labShare: 325, docShare: 325, type: 'special' },
-        { name: 'HIV I & II', rate: 350, labShare: 175, docShare: 175, type: 'normal' },
-        { name: 'Dengue NS1', rate: 650, labShare: 325, docShare: 325, type: 'special' },
-        { name: 'Dengue Profile (NS1+IgG+IgM)', rate: 1200, labShare: 600, docShare: 600, type: 'special' },
-        { name: 'Chikungunya IgM', rate: 950, labShare: 475, docShare: 475, type: 'special' },
-        { name: 'Typhi Dot (Typhoid)', rate: 850, labShare: 425, docShare: 425, type: 'special' },
-        { name: 'Leptospira IgG/IgM', rate: 1800, labShare: 900, docShare: 900, type: 'special' },
-        { name: 'Trop-I (Troponin I)', rate: 900, labShare: 450, docShare: 450, type: 'special' },
-        { name: 'PT/INR', rate: 550, labShare: 275, docShare: 275, type: 'special' },
-        { name: 'APTT', rate: 500, labShare: 250, docShare: 250, type: 'special' },
-        { name: 'D-Dimer', rate: 1400, labShare: 700, docShare: 700, type: 'special' },
-        { name: 'HHH (Triple H)', rate: 1400, labShare: 700, docShare: 700, type: 'special' },
-        { name: 'ABG (Arterial Blood Gas)', rate: 2000, labShare: 400, docShare: 400, type: 'special' },
-        { name: 'NT-proBNP', rate: 2800, labShare: 1400, docShare: 1400, type: 'special' },
-        { name: 'PSA (Prostate)', rate: 1200, labShare: 200, docShare: 200, type: 'special' },
-        { name: 'Mantoux Test', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'M Panti (Montepanti)', rate: 400, labShare: 200, docShare: 200, type: 'special' },
-        { name: 'Urine Routine/Microscopy', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'UPT (Urine Pregnancy)', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Urine Culture & Sensitivity', rate: 900, labShare: 250, docShare: 250, type: 'special' },
-        { name: 'Microalbumin (Urine)', rate: 200, labShare: 100, docShare: 100, type: 'special' },
-        { name: 'Stool Routine/Microscopy', rate: 150, labShare: 75, docShare: 75, type: 'normal' },
-        { name: 'Stool Occult Blood', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'Semen Analysis', rate: 400, labShare: 200, docShare: 200, type: 'normal' },
-        { name: 'Blood Culture & AST', rate: 1400, labShare: 300, docShare: 300, type: 'special' },
-        { name: 'Pus Culture & AST', rate: 1400, labShare: 300, docShare: 300, type: 'special' },
-        { name: 'Sputum Culture & AST', rate: 1400, labShare: 300, docShare: 300, type: 'special' },
-        { name: 'AFB Stain (TB)', rate: 1400, labShare: 300, docShare: 300, type: 'normal' },
-        { name: 'Gram Stain', rate: 3200, labShare: 600, docShare: 600, type: 'normal' },
-        { name: 'KOH Mount (Fungal)', rate: 500, labShare: 250, docShare: 250, type: 'normal' },
-        { name: 'BSF BSPP', rate: 100, labShare: 50, docShare: 50, type: 'normal' },
-        { name: 'RA TEST', rate: 400, labShare: 200, docShare: 200, type: 'normal' },
-        { name: 'FEVER PROFILE', rate: 600, labShare: 300, docShare: 300, type: 'normal' },
-        { name: 'BODY PROFILE', rate: 2500, labShare: 1100, docShare: 1100, type: 'normal' },
-        { name: 'TROP-I', rate: 900, labShare: 450, docShare: 450, type: 'normal' },
-      ]
-    },
-    {
-      id: 'rl_6040', name: 'Deepak Tiwari 60-40',
-      tests: [
-        { name: 'CBC (Complete Blood Count)', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'ESR', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Blood Group & Rh', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'BT CT (Bleeding/Clotting Time)', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'Peripheral Smear', rate: 850, labShare: 340, docShare: 510, type: 'special' },
-        { name: 'Platelet Count', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Reticulocyte Count', rate: 800, labShare: 320, docShare: 480, type: 'normal' },
-        { name: 'MP (Malaria Parasite)', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'HbA1c (Glycated Hb)', rate: 550, labShare: 220, docShare: 330, type: 'special' },
-        { name: 'BSF (Blood Sugar Fasting)', rate: 50, labShare: 20, docShare: 30, type: 'normal' },
-        { name: 'BSPP (Blood Sugar Post Prandial)', rate: 50, labShare: 20, docShare: 30, type: 'normal' },
-        { name: 'RBS (Random Blood Sugar)', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Urea', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'Creatinine', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'Uric Acid', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'Cholesterol', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'Triglycerides', rate: 200, labShare: 80, docShare: 120, type: 'normal' },
-        { name: 'SGOT (AST)', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'SGPT (ALT)', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'Albumin', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Total Protein', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Bilirubin (Total/Direct)', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'Alk Phosphatase', rate: 250, labShare: 100, docShare: 150, type: 'normal' },
-        { name: 'Calcium', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'Phosphorous', rate: 500, labShare: 200, docShare: 300, type: 'special' },
-        { name: 'GGT', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Amylase', rate: 550, labShare: 220, docShare: 330, type: 'special' },
-        { name: 'Lipase', rate: 900, labShare: 360, docShare: 540, type: 'special' },
-        { name: 'CPK Total', rate: 900, labShare: 360, docShare: 540, type: 'special' },
-        { name: 'CPK-MB', rate: 900, labShare: 360, docShare: 540, type: 'special' },
-        { name: 'Electrolyte (Na/K/Cl)', rate: 500, labShare: 200, docShare: 300, type: 'special' },
-        { name: 'LDH', rate: 600, labShare: 240, docShare: 360, type: 'special' },
-        { name: 'Lipid Profile', rate: 500, labShare: 200, docShare: 300, type: 'normal' },
-        { name: 'LFT (Liver Function Test)', rate: 500, labShare: 200, docShare: 300, type: 'normal' },
-        { name: 'RFT (Renal Function Test)', rate: 1200, labShare: 480, docShare: 720, type: 'normal' },
-        { name: 'Thyroid Profile (T3/T4/TSH)', rate: 500, labShare: 200, docShare: 300, type: 'special' },
-        { name: 'KFT (Kidney Function Test)', rate: 1000, labShare: 400, docShare: 600, type: 'normal' },
-        { name: 'Widal Test', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'VDRL', rate: 350, labShare: 140, docShare: 210, type: 'normal' },
-        { name: 'RA Factor', rate: 400, labShare: 160, docShare: 240, type: 'normal' },
-        { name: 'ASO Titre', rate: 800, labShare: 320, docShare: 480, type: 'normal' },
-        { name: 'RA + AST (Combined)', rate: 400, labShare: 160, docShare: 240, type: 'normal' },
-        { name: 'CRP', rate: 500, labShare: 200, docShare: 300, type: 'normal' },
-        { name: 'HBsAg', rate: 450, labShare: 180, docShare: 270, type: 'normal' },
-        { name: 'HCV', rate: 650, labShare: 260, docShare: 390, type: 'special' },
-        { name: 'HIV I & II', rate: 350, labShare: 140, docShare: 210, type: 'normal' },
-        { name: 'Dengue NS1', rate: 650, labShare: 260, docShare: 390, type: 'special' },
-        { name: 'Dengue Profile (NS1+IgG+IgM)', rate: 1200, labShare: 480, docShare: 720, type: 'special' },
-        { name: 'Chikungunya IgM', rate: 950, labShare: 380, docShare: 570, type: 'special' },
-        { name: 'Typhi Dot (Typhoid)', rate: 850, labShare: 340, docShare: 510, type: 'special' },
-        { name: 'Leptospira IgG/IgM', rate: 1800, labShare: 720, docShare: 1080, type: 'special' },
-        { name: 'Trop-I (Troponin I)', rate: 900, labShare: 360, docShare: 540, type: 'special' },
-        { name: 'PT/INR', rate: 550, labShare: 220, docShare: 330, type: 'special' },
-        { name: 'APTT', rate: 500, labShare: 200, docShare: 300, type: 'special' },
-        { name: 'D-Dimer', rate: 1400, labShare: 560, docShare: 840, type: 'special' },
-        { name: 'HHH (Triple H)', rate: 1400, labShare: 560, docShare: 840, type: 'special' },
-        { name: 'ABG (Arterial Blood Gas)', rate: 2000, labShare: 800, docShare: 1200, type: 'special' },
-        { name: 'NT-proBNP', rate: 2800, labShare: 1120, docShare: 1680, type: 'special' },
-        { name: 'PSA (Prostate)', rate: 1200, labShare: 480, docShare: 720, type: 'special' },
-        { name: 'Mantoux Test', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'M Panti (Montepanti)', rate: 400, labShare: 160, docShare: 240, type: 'special' },
-        { name: 'Urine Routine/Microscopy', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'UPT (Urine Pregnancy)', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Urine Culture & Sensitivity', rate: 900, labShare: 360, docShare: 540, type: 'special' },
-        { name: 'Microalbumin (Urine)', rate: 200, labShare: 80, docShare: 120, type: 'special' },
-        { name: 'Stool Routine/Microscopy', rate: 150, labShare: 60, docShare: 90, type: 'normal' },
-        { name: 'Stool Occult Blood', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'Semen Analysis', rate: 400, labShare: 160, docShare: 240, type: 'normal' },
-        { name: 'Blood Culture & AST', rate: 1400, labShare: 560, docShare: 840, type: 'special' },
-        { name: 'Pus Culture & AST', rate: 1400, labShare: 560, docShare: 840, type: 'special' },
-        { name: 'Sputum Culture & AST', rate: 1400, labShare: 560, docShare: 840, type: 'special' },
-        { name: 'AFB Stain (TB)', rate: 1400, labShare: 560, docShare: 840, type: 'normal' },
-        { name: 'Gram Stain', rate: 3200, labShare: 1280, docShare: 1920, type: 'normal' },
-        { name: 'KOH Mount (Fungal)', rate: 500, labShare: 200, docShare: 300, type: 'normal' },
-        { name: 'BSF BSPP', rate: 100, labShare: 40, docShare: 60, type: 'normal' },
-        { name: 'RA TEST', rate: 400, labShare: 160, docShare: 240, type: 'normal' },
-        { name: 'FEVER PROFILE', rate: 600, labShare: 240, docShare: 360, type: 'normal' },
-        { name: 'BODY PROFILE', rate: 2500, labShare: 1000, docShare: 1500, type: 'normal' },
-        { name: 'TROP-I', rate: 900, labShare: 360, docShare: 540, type: 'normal' },
+        { name: 'CBC (Complete Blood Count)', rate: 200, type: 'normal' },
+        { name: 'ESR', rate: 100, type: 'normal' },
+        { name: 'Blood Group & Rh', rate: 100, type: 'normal' },
+        { name: 'BT CT (Bleeding/Clotting Time)', rate: 150, type: 'normal' },
+        { name: 'Peripheral Smear', rate: 850, type: 'special' },
+        { name: 'Platelet Count', rate: 100, type: 'normal' },
+        { name: 'Reticulocyte Count', rate: 800, type: 'normal' },
+        { name: 'MP (Malaria Parasite)', rate: 100, type: 'normal' },
+        { name: 'HbA1c (Glycated Hb)', rate: 550, type: 'special' },
+        { name: 'BSF (Blood Sugar Fasting)', rate: 50, type: 'normal' },
+        { name: 'BSPP (Blood Sugar Post Prandial)', rate: 50, type: 'normal' },
+        { name: 'RBS (Random Blood Sugar)', rate: 100, type: 'normal' },
+        { name: 'Urea', rate: 200, type: 'normal' },
+        { name: 'Creatinine', rate: 200, type: 'normal' },
+        { name: 'Uric Acid', rate: 200, type: 'normal' },
+        { name: 'Cholesterol', rate: 200, type: 'normal' },
+        { name: 'Triglycerides', rate: 200, type: 'normal' },
+        { name: 'SGOT (AST)', rate: 150, type: 'normal' },
+        { name: 'SGPT (ALT)', rate: 150, type: 'normal' },
+        { name: 'Albumin', rate: 100, type: 'normal' },
+        { name: 'Total Protein', rate: 100, type: 'normal' },
+        { name: 'Bilirubin (Total/Direct)', rate: 150, type: 'normal' },
+        { name: 'Alk Phosphatase', rate: 250, type: 'normal' },
+        { name: 'Calcium', rate: 150, type: 'normal' },
+        { name: 'Phosphorous', rate: 500, type: 'special' },
+        { name: 'GGT', rate: 100, type: 'normal' },
+        { name: 'Amylase', rate: 550, type: 'special' },
+        { name: 'Lipase', rate: 900, type: 'special' },
+        { name: 'CPK Total', rate: 900, type: 'special' },
+        { name: 'CPK-MB', rate: 900, type: 'special' },
+        { name: 'Electrolyte (Na/K/Cl)', rate: 500, type: 'special' },
+        { name: 'LDH', rate: 600, type: 'special' },
+        { name: 'Lipid Profile', rate: 500, type: 'normal' },
+        { name: 'LFT (Liver Function Test)', rate: 500, type: 'normal' },
+        { name: 'RFT (Renal Function Test)', rate: 1200, type: 'normal' },
+        { name: 'Thyroid Profile (T3/T4/TSH)', rate: 500, type: 'special' },
+        { name: 'KFT (Kidney Function Test)', rate: 1000, type: 'normal' },
+        { name: 'Widal Test', rate: 150, type: 'normal' },
+        { name: 'VDRL', rate: 350, type: 'normal' },
+        { name: 'RA Factor', rate: 400, type: 'normal' },
+        { name: 'ASO Titre', rate: 800, type: 'normal' },
+        { name: 'RA + AST (Combined)', rate: 400, type: 'normal' },
+        { name: 'CRP', rate: 500, type: 'normal' },
+        { name: 'HBsAg', rate: 450, type: 'normal' },
+        { name: 'HCV', rate: 650, type: 'special' },
+        { name: 'HIV I & II', rate: 350, type: 'normal' },
+        { name: 'Dengue NS1', rate: 650, type: 'special' },
+        { name: 'Dengue Profile (NS1+IgG+IgM)', rate: 1200, type: 'special' },
+        { name: 'Chikungunya IgM', rate: 950, type: 'special' },
+        { name: 'Typhi Dot (Typhoid)', rate: 850, type: 'special' },
+        { name: 'Leptospira IgG/IgM', rate: 1800, type: 'special' },
+        { name: 'Trop-I (Troponin I)', rate: 900, type: 'special' },
+        { name: 'PT/INR', rate: 550, type: 'special' },
+        { name: 'APTT', rate: 500, type: 'special' },
+        { name: 'D-Dimer', rate: 1400, type: 'special' },
+        { name: 'HHH (Triple H)', rate: 1400, type: 'special' },
+        { name: 'ABG (Arterial Blood Gas)', rate: 2000, type: 'special' },
+        { name: 'NT-proBNP', rate: 2800, type: 'special' },
+        { name: 'PSA (Prostate)', rate: 1200, type: 'special' },
+        { name: 'Mantoux Test', rate: 100, type: 'normal' },
+        { name: 'M Panti (Montepanti)', rate: 400, type: 'special' },
+        { name: 'Urine Routine/Microscopy', rate: 100, type: 'normal' },
+        { name: 'UPT (Urine Pregnancy)', rate: 100, type: 'normal' },
+        { name: 'Urine Culture & Sensitivity', rate: 900, type: 'special' },
+        { name: 'Microalbumin (Urine)', rate: 200, type: 'special' },
+        { name: 'Stool Routine/Microscopy', rate: 150, type: 'normal' },
+        { name: 'Stool Occult Blood', rate: 100, type: 'normal' },
+        { name: 'Semen Analysis', rate: 400, type: 'normal' },
+        { name: 'Blood Culture & AST', rate: 1400, type: 'special' },
+        { name: 'Pus Culture & AST', rate: 1400, type: 'special' },
+        { name: 'Sputum Culture & AST', rate: 1400, type: 'special' },
+        { name: 'AFB Stain (TB)', rate: 1400, type: 'normal' },
+        { name: 'Gram Stain', rate: 3200, type: 'normal' },
+        { name: 'KOH Mount (Fungal)', rate: 500, type: 'normal' },
+        { name: 'BSF BSPP', rate: 100, type: 'normal' },
+        { name: 'RA TEST', rate: 400, type: 'normal' },
+        { name: 'FEVER PROFILE', rate: 600, type: 'normal' },
+        { name: 'BODY PROFILE', rate: 2500, type: 'normal' },
+        { name: 'TROP-I', rate: 900, type: 'normal' },
       ]
     }
   ];
 
-  // Doctors — all get 50-50 except Deepak Tiwari
+  // Doctors — all get 50% split except Deepak Tiwari (60%)
+  // docPercent = doctor's share percentage of the rate
   doctors = [
-    { id: 'doc_deepak_tiwari', name: 'Deepak Tiwari', rateListId: 'rl_6040' },
-    { id: 'doc_abhishek_singh', name: 'Abhishek Singh', rateListId: 'rl_5050' },
-    { id: 'doc_dr_sunil_mani_tripathi', name: 'Dr. Sunil Mani Tripathi', rateListId: 'rl_5050' },
-    { id: 'doc_dr_c_v_yadav', name: 'Dr. C.V Yadav', rateListId: 'rl_5050' },
-    { id: 'doc_dr_kalyani_thengane', name: 'Dr. Kalyani Thengane', rateListId: 'rl_5050' },
-    { id: 'doc_sandeep_gaud', name: 'Sandeep Gaud', rateListId: 'rl_5050' },
-    { id: 'doc_dr_netra_yadav', name: 'Dr. Netra Yadav', rateListId: 'rl_5050' },
-    { id: 'doc_dr_narendra_patil', name: 'Dr. Narendra Patil', rateListId: 'rl_5050' },
-    { id: 'doc_dr_ajay_r_yadav', name: 'Dr. Ajay R Yadav', rateListId: 'rl_5050' },
-    { id: 'doc_dr_amit_kumar_meena', name: 'Dr. Amit Kumar Meena', rateListId: 'rl_5050' },
-    { id: 'doc_dr_khusboo_pandey', name: 'Dr. Khusboo Pandey', rateListId: 'rl_5050' },
-    { id: 'doc_satyendra_tiwari', name: 'Satyendra Tiwari', rateListId: 'rl_5050' },
-    { id: 'doc_lotus_hospital', name: 'Lotus Hospital', rateListId: 'rl_5050' },
-    { id: 'doc_dhurva_hospital', name: 'Dhurva Hospital', rateListId: 'rl_5050' },
-    { id: 'doc_dr_chandreshekhar_jain', name: 'Dr. Chandreshekhar Jain', rateListId: 'rl_5050' },
-    { id: 'doc_dr_ruchi_jain', name: 'Dr. Ruchi Jain', rateListId: 'rl_5050' },
+    { id: 'doc_deepak_tiwari', name: 'Deepak Tiwari', docPercent: 60 },
+    { id: 'doc_abhishek_singh', name: 'Abhishek Singh', docPercent: 50 },
+    { id: 'doc_dr_sunil_mani_tripathi', name: 'Dr. Sunil Mani Tripathi', docPercent: 50 },
+    { id: 'doc_dr_c_v_yadav', name: 'Dr. C.V Yadav', docPercent: 50 },
+    { id: 'doc_dr_kalyani_thengane', name: 'Dr. Kalyani Thengane', docPercent: 50 },
+    { id: 'doc_sandeep_gaud', name: 'Sandeep Gaud', docPercent: 50 },
+    { id: 'doc_dr_netra_yadav', name: 'Dr. Netra Yadav', docPercent: 50 },
+    { id: 'doc_dr_narendra_patil', name: 'Dr. Narendra Patil', docPercent: 50 },
+    { id: 'doc_dr_ajay_r_yadav', name: 'Dr. Ajay R Yadav', docPercent: 50 },
+    { id: 'doc_dr_amit_kumar_meena', name: 'Dr. Amit Kumar Meena', docPercent: 50 },
+    { id: 'doc_dr_khusboo_pandey', name: 'Dr. Khusboo Pandey', docPercent: 50 },
+    { id: 'doc_satyendra_tiwari', name: 'Satyendra Tiwari', docPercent: 50 },
+    { id: 'doc_lotus_hospital', name: 'Lotus Hospital', docPercent: 50 },
+    { id: 'doc_dhurva_hospital', name: 'Dhurva Hospital', docPercent: 50 },
+    { id: 'doc_dr_chandreshekhar_jain', name: 'Dr. Chandreshekhar Jain', docPercent: 50 },
+    { id: 'doc_dr_ruchi_jain', name: 'Dr. Ruchi Jain', docPercent: 50 },
   ];
 
   // Collection boys
@@ -264,22 +181,72 @@ function seedDefaultData() {
   }
 }
 
-// Rebuild 60-40 rate list from 50-50: same tests, same prices, 60/40 split
-function syncRateLists() {
-  let rl5050 = rateLists.find(r => r.id === 'rl_5050');
-  let rl6040 = rateLists.find(r => r.id === 'rl_6040');
-  if (!rl5050 || !rl6040) return;
-  // Check if any test is missing or has rate 0
-  let needsRebuild = rl6040.tests.length !== rl5050.tests.length ||
-    rl6040.tests.some(t => !t.rate || !t.labShare || !t.docShare);
-  if (!needsRebuild) return;
-  // Rebuild entirely from 50-50
-  rl6040.tests = rl5050.tests.map(src => {
-    let doc60 = Math.floor(src.rate * 0.6);
-    return { name: src.name, rate: src.rate, labShare: src.rate - doc60, docShare: doc60, type: src.type };
+// Get the master rate list (always the first/only one)
+function getMasterRL() {
+  return rateLists[0] || null;
+}
+
+// Get doctor's split percentage (defaults to 50 if not set)
+function getDocPercent(docId) {
+  if (!docId || docId === '__self__') return 50;
+  let doc = doctors.find(d => d.id === docId);
+  return (doc && doc.docPercent != null) ? doc.docPercent : 50;
+}
+
+// Calculate labShare and docShare from rate and doctor's percentage
+function calcShares(rate, docPercent) {
+  let docShare = Math.round(rate * docPercent / 100);
+  return { labShare: rate - docShare, docShare };
+}
+
+// Migrate existing data: convert old rateListId-based doctors to docPercent
+function migrateData() {
+  let changed = false;
+
+  // Migrate doctors: if they have rateListId but no docPercent, convert
+  doctors.forEach(d => {
+    if (d.docPercent == null) {
+      if (d.rateListId === 'rl_6040') {
+        d.docPercent = 60;
+      } else {
+        d.docPercent = 50;
+      }
+      delete d.rateListId;
+      changed = true;
+    }
   });
-  saveLocal();
-  if (dbReady) sbSave('rate_lists', rl6040.id, rl6040);
+
+  // Migrate rate lists: merge into one master if old format
+  if (rateLists.length > 1 || (rateLists.length === 1 && rateLists[0].id !== 'rl_master')) {
+    // Find the best source (prefer rl_5050 or first one)
+    let source = rateLists.find(r => r.id === 'rl_5050') || rateLists[0];
+    if (source) {
+      // Strip labShare/docShare from tests
+      let masterTests = source.tests.map(t => ({ name: t.name, rate: t.rate, type: t.type }));
+      rateLists = [{ id: 'rl_master', name: 'SBCL Master Rate List', tests: masterTests }];
+      changed = true;
+    }
+  } else if (rateLists.length === 1 && rateLists[0].id === 'rl_master') {
+    // Already migrated, but clean labShare/docShare from tests if present
+    let rl = rateLists[0];
+    let needsClean = rl.tests.some(t => t.labShare != null || t.docShare != null);
+    if (needsClean) {
+      rl.tests = rl.tests.map(t => ({ name: t.name, rate: t.rate, type: t.type }));
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveLocal();
+    // Sync to Supabase
+    if (dbReady) {
+      rateLists.forEach(r => sbSave('rate_lists', r.id, r));
+      doctors.forEach(d => sbSave('doctors', d.id, d));
+      // Delete old rate lists from Supabase
+      sbDelete('rate_lists', 'rl_5050');
+      sbDelete('rate_lists', 'rl_6040');
+    }
+  }
 }
 
 function saveLocal() {
@@ -336,7 +303,7 @@ async function loadAllFromSupabase() {
     if (cfgData && cfgData.data) settings = { ...settings, ...cfgData.data };
 
     saveLocal();
-    syncRateLists(); // fix 60-40 from 50-50 after Supabase load
+    migrateData(); // Convert old format to new single-rate-list + docPercent
     setDbStatus('Online ✓', 'db-online');
 
     // Refresh UI after sync
@@ -384,8 +351,6 @@ function saveEntry_db(entry) {
   saveLocal();
   if (dbReady) sbSave('entries', entry.id, entry);
 }
-
-// Supabase setup UI removed — auto-connects with hardcoded config
 
 // ========== UTILITIES ==========
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
