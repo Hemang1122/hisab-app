@@ -115,7 +115,7 @@ function populateDropdowns() {
   let eColl = document.getElementById('eCollector');
 
   if (eDoc) eDoc.innerHTML = docOpts;
-  if (hDoc) hDoc.innerHTML = '<option value="">-- Select --</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
+  if (hDoc) hDoc.innerHTML = '<option value="">-- Select --</option>' + selfOpt + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   if (regDoc) regDoc.innerHTML = '<option value="">Sabhi Doctors</option>' + '<option value="__self__">Self (Walk-in)</option>' + doctors.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('');
   if (eColl) eColl.innerHTML = '<option value="">-- None --</option>' + collectors.map(c => '<option value="' + c.id + '">' + c.name + '</option>').join('');
 }

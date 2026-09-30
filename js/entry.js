@@ -44,16 +44,29 @@ function initDoctorChange() {
 function loadTestCheckboxes(rl) {
   let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
   rlSpan.textContent = rl.name;
-  container.innerHTML = rl.tests.length ? rl.tests.map((t, i) => {
+  if (!rl.tests.length) {
+    container.innerHTML = '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
+    calcEntry(); return;
+  }
+  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo..." oninput="filterTests()" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
+  let testsHtml = rl.tests.map((t, i) => {
     let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' test-incomplete' : '';
-    return '<div class="test-row' + incomplete + '">' +
+    return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
     '<input type="checkbox" class="test-cb" data-idx="' + i + '" data-rlid="' + rl.id + '" onchange="calcEntry()"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
     '<span class="trate">&#8377;' + (t.rate || 0) + '</span></div>';
-  }).join('') : '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
+  }).join('');
+  container.innerHTML = searchHtml + testsHtml;
   calcEntry();
+}
+
+function filterTests() {
+  let q = (document.getElementById('testSearch').value || '').toLowerCase();
+  document.querySelectorAll('#testCheckboxes .test-row').forEach(row => {
+    row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
+  });
 }
 
 // Apply rate list for Self (Walk-in) patients
