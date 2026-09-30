@@ -22,11 +22,18 @@ function initDoctorChange() {
     let val = this.value;
     let container = document.getElementById('testCheckboxes'), rlSpan = document.getElementById('rlName');
 
-    // Handle Self (Walk-in)
+    // Handle Self (Walk-in) — auto-load 50-50 rate list
     if (val === '__self__') {
-      let sel = document.getElementById('selfRLSelect');
-      sel.innerHTML = '<option value="">-- Select Rate List --</option>' + rateLists.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
-      document.getElementById('selfRLModal').classList.add('show');
+      let rl5050 = rateLists.find(r => r.name.includes('50-50') || r.name.includes('50 50'));
+      if (rl5050) {
+        document.getElementById('eDoctor').dataset.selfRlId = rl5050.id;
+        loadTestCheckboxes(rl5050);
+      } else if (rateLists.length) {
+        // Fallback: show modal if no 50-50 found
+        let sel = document.getElementById('selfRLSelect');
+        sel.innerHTML = '<option value="">-- Select Rate List --</option>' + rateLists.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
+        document.getElementById('selfRLModal').classList.add('show');
+      }
       return;
     }
 
@@ -48,7 +55,7 @@ function loadTestCheckboxes(rl) {
     container.innerHTML = '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
     calcEntry(); return;
   }
-  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo..." oninput="filterTests()" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
+  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter to select)" oninput="filterTests()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();selectFirstVisibleTest()}" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
   let testsHtml = rl.tests.map((t, i) => {
     let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' test-incomplete' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '">' +
@@ -67,6 +74,17 @@ function filterTests() {
   document.querySelectorAll('#testCheckboxes .test-row').forEach(row => {
     row.style.display = row.dataset.testname.includes(q) ? '' : 'none';
   });
+}
+
+function selectFirstVisibleTest() {
+  let visible = document.querySelector('#testCheckboxes .test-row:not([style*="display: none"]):not([style*="display:none"])');
+  if (visible) {
+    let cb = visible.querySelector('.test-cb');
+    if (cb) { cb.checked = !cb.checked; calcEntry(); }
+  }
+  // Clear search after selecting
+  let s = document.getElementById('testSearch');
+  if (s) { s.value = ''; filterTests(); s.focus(); }
 }
 
 // Apply rate list for Self (Walk-in) patients

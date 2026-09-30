@@ -83,16 +83,53 @@ function renderRateLists() {
   c.innerHTML = rateLists.map(rl => {
     let assignedDocs = doctors.filter(d => d.rateListId === rl.id).map(d => d.name);
     let docStr = assignedDocs.length ? assignedDocs.join(', ') : '<i style="color:#999">Koi doctor assign nahi</i>';
-    let rows = rl.tests.length ? rl.tests.map(t => {
+    let testCount = rl.tests.length;
+    let incompleteCount = rl.tests.filter(t => !t.rate || !t.labShare || !t.docShare).length;
+    let countBadge = testCount + ' tests' + (incompleteCount ? ' <span style="color:var(--warn)">(' + incompleteCount + ' incomplete)</span>' : '');
+    let rows = testCount ? rl.tests.map((t, idx) => {
       let incomplete = (!t.rate || !t.labShare || !t.docShare) ? ' style="background:var(--warn-bg)"' : '';
       let warn = (!t.rate || !t.labShare || !t.docShare) ? ' ⚠️' : '';
-      return '<tr' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td></tr>';
-    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
+      return '<tr' + incomplete + '><td>' + t.name + warn + '</td><td><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td><td>₹' + (t.rate || 0) + '</td><td>₹' + (t.labShare || 0) + '</td><td>₹' + (t.docShare || 0) + '</td><td><button class="btn btn-sm btn-secondary" onclick="editSingleTest(\'' + rl.id + '\',' + idx + ')" style="padding:2px 8px;font-size:11px">✏️</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
     return '<div class="card"><div class="flex-between"><div><b>' + rl.name + '</b><br><small>Doctors: ' + docStr + '</small></div><div>' +
-      '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit</button> ' +
+      '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')">Edit All</button> ' +
       '<button class="btn btn-sm btn-danger" onclick="deleteRL(\'' + rl.id + '\')">Delete</button></div></div>' +
-      '<table style="margin-top:8px"><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th></tr>' + rows + '</table></div>';
+      '<div style="margin-top:8px"><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
+      '<div class="rl-tests-wrap" style="display:none;margin-top:6px"><table><tr><th>Test</th><th>Type</th><th>Rate</th><th>Lab</th><th>Doctor</th><th></th></tr>' + rows + '</table></div></div></div>';
   }).join('');
+}
+
+function toggleRLTests(btn) {
+  let wrap = btn.nextElementSibling;
+  if (wrap.style.display === 'none') {
+    wrap.style.display = 'block';
+    btn.textContent = btn.textContent.replace('▶ Show', '▼ Hide');
+  } else {
+    wrap.style.display = 'none';
+    btn.textContent = btn.textContent.replace('▼ Hide', '▶ Show');
+  }
+}
+
+function editSingleTest(rlId, idx) {
+  let rl = rateLists.find(r => r.id === rlId);
+  if (!rl || !rl.tests[idx]) return;
+  let t = rl.tests[idx];
+  let name = prompt('Test Name:', t.name);
+  if (name === null) return;
+  let rate = prompt('Rate ₹:', t.rate || 0);
+  if (rate === null) return;
+  rate = parseFloat(rate) || 0;
+  let rlName = rl.name.toLowerCase();
+  let docPct = (rlName.includes('60-40') || rlName.includes('60 40')) ? 0.6 : 0.5;
+  let docShare = Math.round(rate * docPct);
+  let labShare = rate - docShare;
+  let type = prompt('Type (normal/special):', t.type || 'normal');
+  if (type === null) return;
+  type = (type === 'special') ? 'special' : 'normal';
+  rl.tests[idx] = { name: name.trim() || t.name, rate, labShare, docShare, type };
+  saveAll();
+  if (dbReady) sbSave('rate_lists', rlId, rl);
+  renderRateLists();
 }
 
 function deleteRL(id) {

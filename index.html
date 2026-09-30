@@ -87,7 +87,7 @@
 <option value="paid">Paid</option>
 <option value="partial">Balance</option>
 </select>
-<input id="ePaid" type="number" value="0" placeholder="Paid &#8377;" oninput="calcEntry()" style="display:none">
+<input id="ePaid" type="number" value="0" placeholder="Paid &#8377;" oninput="calcEntry()" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" style="display:none">
 <span id="balDisplay"></span>
 </div></div>
 </div>
