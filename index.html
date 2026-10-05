@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=41">
+<link rel="stylesheet" href="css/styles.css?v=42">
 </head>
 <body>
 
@@ -23,6 +23,7 @@
     <a href="#" onclick="showTab('hisab');return false" data-tab="hisab"><span class="nav-icon">&#128424;</span> Hisab Print</a>
     <a href="#" onclick="showTab('revenue');return false" data-tab="revenue"><span class="nav-icon">&#128200;</span> Revenue</a>
     <a href="#" onclick="showTab('ratelist');return false" data-tab="ratelist"><span class="nav-icon">&#128196;</span> Rate List</a>
+    <a href="#" onclick="showTab('materials');return false" data-tab="materials"><span class="nav-icon">&#129514;</span> Materials & Cost</a>
     <a href="#" onclick="showTab('doctors');return false" data-tab="doctors"><span class="nav-icon">&#129658;</span> Doctors &amp; Staff</a>
     <a href="#" onclick="showTab('settings');return false" data-tab="settings"><span class="nav-icon">&#9881;</span> Settings</a>
   </div>
@@ -269,6 +270,42 @@
 <div id="rateListsView"></div>
 </div>
 
+<!-- TAB: Materials & Cost -->
+<div id="tab-materials" class="tab">
+<div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#129514; Materials & Reagent Cost</h2></div>
+<div class="card no-print" style="padding:12px;background:#fffbf3;border-left:4px solid var(--accent)">
+<p style="font-size:12px;color:#555;margin:0 0 4px"><b>What is this?</b> Set the reagent / consumable cost per test (how much your lab spends on materials for ONE test). Default values come from typical Indian-market mid-tier reagent prices — <b>adjust to match your actual supplier bills</b>. This drives the profit margin numbers in the Revenue page.</p>
+</div>
+
+<!-- Period filter for consumption stats -->
+<div class="card no-print" style="padding:10px;margin-bottom:10px">
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+<button class="btn btn-sm btn-secondary" onclick="setMatPreset('today')" style="font-size:11px;padding:4px 10px">Today</button>
+<button class="btn btn-sm btn-secondary" onclick="setMatPreset('last7')" style="font-size:11px;padding:4px 10px">Last 7 Days</button>
+<button class="btn btn-sm btn-secondary" onclick="setMatPreset('thisMonth')" style="font-size:11px;padding:4px 10px">This Month</button>
+<button class="btn btn-sm btn-secondary" onclick="setMatPreset('lastMonth')" style="font-size:11px;padding:4px 10px">Last Month</button>
+<button class="btn btn-sm btn-secondary" onclick="setMatPreset('all')" style="font-size:11px;padding:4px 10px">All Time</button>
+</div>
+<div class="row">
+<div><label style="font-size:11px">From</label><input type="date" id="matFrom" onchange="renderMaterialsTab()"></div>
+<div><label style="font-size:11px">To</label><input type="date" id="matTo" onchange="renderMaterialsTab()"></div>
+<div style="align-self:end;display:flex;gap:6px">
+<button class="btn btn-primary btn-sm" onclick="renderMaterialsTab()">🔄 Refresh</button>
+<button class="btn btn-secondary btn-sm" onclick="printMaterialsReport()">🖨️ Print</button>
+</div>
+</div>
+</div>
+
+<!-- Tabs: Edit Costs vs Consumption -->
+<div class="no-print" style="display:flex;gap:4px;overflow-x:auto;padding:4px 0 8px;border-bottom:2px solid var(--n200);margin-bottom:12px">
+<button class="rev-tab-btn active" data-matsection="consumption" onclick="switchMatSection('consumption')">📊 Consumption & Profit</button>
+<button class="rev-tab-btn" data-matsection="edit" onclick="switchMatSection('edit')">✏️ Edit Reagent Costs</button>
+<button class="rev-tab-btn" data-matsection="shopping" onclick="switchMatSection('shopping')">🛒 Shopping List</button>
+</div>
+
+<div id="materialsResult"></div>
+</div>
+
 <!-- TAB: Doctors & Staff -->
 <div id="tab-doctors" class="tab">
 <div class="section-header">
@@ -420,16 +457,17 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=41"></script>
-<script src="js/ui.js?v=41"></script>
-<script src="js/ratelist.js?v=41"></script>
-<script src="js/doctors.js?v=41"></script>
-<script src="js/entry.js?v=41"></script>
-<script src="js/register.js?v=41"></script>
-<script src="js/hisab.js?v=41"></script>
-<script src="js/revenue.js?v=41"></script>
-<script src="js/mywork.js?v=41"></script>
-<script src="js/backup.js?v=41"></script>
+<script src="js/db.js?v=42"></script>
+<script src="js/ui.js?v=42"></script>
+<script src="js/ratelist.js?v=42"></script>
+<script src="js/doctors.js?v=42"></script>
+<script src="js/entry.js?v=42"></script>
+<script src="js/register.js?v=42"></script>
+<script src="js/hisab.js?v=42"></script>
+<script src="js/revenue.js?v=42"></script>
+<script src="js/mywork.js?v=42"></script>
+<script src="js/materials.js?v=42"></script>
+<script src="js/backup.js?v=42"></script>
 
 <!-- Init -->
 <script>
