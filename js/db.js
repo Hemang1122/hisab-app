@@ -398,14 +398,16 @@ function getDocPercent(docId) {
 function syncEntriesToRateList() {
   let rl = getMasterRL();
   if (!rl) return 0;
+  // Normalize names so minor whitespace/case differences still match
+  function keyOf(s) { return (s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
   let nameMap = {};
-  rl.tests.forEach(t => { nameMap[t.name.toLowerCase()] = t; });
+  rl.tests.forEach(t => { nameMap[keyOf(t.name)] = t; });
   let touchedIds = [];
   entries.forEach(e => {
     let entryChanged = false;
     let docPct = getDocPercent(e.doctorId);
     e.tests.forEach(t => {
-      let master = nameMap[(t.name || '').toLowerCase()];
+      let master = nameMap[keyOf(t.name)];
       if (master) {
         let newShares = calcShares(master.rate, docPct, master);
         if (t.rate !== master.rate || t.type !== master.type ||

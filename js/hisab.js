@@ -7,6 +7,16 @@ function generateHisab() {
   if (!from || !to) return alert('Date range daalo!');
   let isSelf = docId === '__self__';
   let doc = isSelf ? { name: 'Self (Walk-in)' } : doctors.find(d => d.id === docId);
+
+  // ALWAYS sync entries to current rate list before generating — so any
+  // rate / custom-split changes made in the Rate List are reflected here.
+  if (typeof syncEntriesToRateList === 'function') {
+    let updated = syncEntriesToRateList();
+    if (updated > 0 && typeof toast === 'function') {
+      toast('🔄 ' + updated + ' ' + (updated === 1 ? 'entry' : 'entries') + ' updated to latest rates');
+    }
+  }
+
   let filtered = entries.filter(e => e.doctorId === docId && e.date >= from && e.date <= to).sort((a, b) => a.date.localeCompare(b.date));
   if (!filtered.length) { document.getElementById('hisabResult').innerHTML = '<div class="empty">No entries found in this date range.</div>'; return; }
 

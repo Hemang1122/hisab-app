@@ -4,6 +4,15 @@ function showRevenue() {
   if (!checkRevAccess()) return;
   let from = document.getElementById('revFrom').value, to = document.getElementById('revTo').value;
   if (!from || !to) return alert('Date range select karo!');
+
+  // Keep entries in sync with current master rate list (custom shares, prices)
+  if (typeof syncEntriesToRateList === 'function') {
+    let updated = syncEntriesToRateList();
+    if (updated > 0 && typeof toast === 'function') {
+      toast('🔄 ' + updated + ' ' + (updated === 1 ? 'entry' : 'entries') + ' updated to latest rates');
+    }
+  }
+
   let filtered = entries.filter(e => e.date >= from && e.date <= to);
 
   if (!filtered.length) {
