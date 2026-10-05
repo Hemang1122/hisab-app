@@ -56,7 +56,10 @@ function loadTestCheckboxes(rl, docPercent) {
     container.innerHTML = '<div class="empty" style="padding:15px">Is rate list mein koi test nahi hai. Rate List tab mein tests add karo.</div>';
     calcEntry(); return;
   }
-  let searchHtml = '<input id="testSearch" placeholder="🔍 Test search karo... (Enter/Tab to select)" oninput="filterTests()" onkeydown="testSearchKeyHandler(event)" style="width:100%;margin-bottom:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;position:sticky;top:0;background:white;z-index:1">';
+  let searchHtml = '<div style="position:sticky;top:0;background:white;z-index:5;padding:4px 2px 8px;border-bottom:2px solid var(--accent);margin-bottom:6px">' +
+    '<input id="testSearch" placeholder="🔍 Test search karo..." oninput="filterTests()" onkeydown="testSearchKeyHandler(event)" style="width:100%;padding:9px 12px;border:2px solid var(--accent);border-radius:var(--radius);font-size:14px;font-weight:500;background:#fffdf7;outline:none;box-shadow:0 2px 6px rgba(200,132,60,.15)">' +
+    '<div style="font-size:10px;color:#999;margin-top:2px">Press Tab to focus a test, Enter to select, Tab again to go to Discount</div>' +
+    '</div>';
   let testsHtml = rl.tests.map((t, i) => {
     let incomplete = !t.rate ? ' test-incomplete' : '';
     // Rate span is clickable — opens quick-edit modal (highlighted when rate=0)

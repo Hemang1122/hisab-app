@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=39">
+<link rel="stylesheet" href="css/styles.css?v=40">
 </head>
 <body>
 
@@ -194,7 +194,11 @@
 </div>
 <div class="row">
 <div><label>Doctor / Hospital</label>
-<select id="hDoctor"><option value="">-- Select --</option></select></div>
+<div class="doc-combo" style="position:relative">
+<input id="hDoctorSearch" type="text" placeholder="🔍 Type doctor/hospital name..." autocomplete="off" oninput="filterHDocCombo()" onfocus="showHDocCombo()" onkeydown="hDocComboKey(event)">
+<div id="hDoctorDropdown" class="doc-combo-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--n200);border-radius:6px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-top:2px"></div>
+<select id="hDoctor" style="display:none"><option value="">-- Select --</option></select>
+</div></div>
 </div>
 <div style="margin-top:10px">
 <button class="btn btn-primary" onclick="generateHisab()">&#128203; Generate Hisab</button>
@@ -206,30 +210,52 @@
 
 <!-- TAB: Revenue -->
 <div id="tab-revenue" class="tab">
-<div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#128200; Revenue Dashboard</h2></div>
-<div class="card no-print">
-<div style="margin-bottom:10px">
-<label style="display:block;margin-bottom:6px;font-size:12px;color:#666">Quick Select Timeline:</label>
-<div style="display:flex;gap:6px;flex-wrap:wrap">
+<div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#128200; Revenue</h2></div>
+<div class="card no-print" style="padding:12px">
+
+<!-- Day navigator (simple day-by-day) -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--brand-surface);padding:8px 10px;border-radius:8px">
+<button onclick="revDayShift(-1)" title="Previous day" style="background:white;border:1px solid var(--n200);width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px">◀</button>
+<div style="flex:1;text-align:center">
+<div id="revDayLabel" style="font-size:15px;font-weight:700;color:var(--brand)">Today</div>
+<div style="font-size:11px;color:#666" id="revDayRange">—</div>
+</div>
+<button onclick="revDayShift(1)" title="Next day" style="background:white;border:1px solid var(--n200);width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:16px">▶</button>
+<button onclick="revDayToday()" title="Jump to today" style="background:white;border:1px solid var(--n200);padding:0 12px;height:34px;border-radius:6px;cursor:pointer;font-size:12px">Today</button>
+</div>
+
+<!-- Timeline presets -->
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">
 <button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('today')" style="font-size:11px;padding:4px 10px">Today</button>
 <button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('yesterday')" style="font-size:11px;padding:4px 10px">Yesterday</button>
-<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('last7')" style="font-size:11px;padding:4px 10px">Last 7 Days</button>
-<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('last30')" style="font-size:11px;padding:4px 10px">Last 30 Days</button>
+<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('last7')" style="font-size:11px;padding:4px 10px">7 Days</button>
+<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('last30')" style="font-size:11px;padding:4px 10px">30 Days</button>
 <button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('thisMonth')" style="font-size:11px;padding:4px 10px">This Month</button>
 <button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('lastMonth')" style="font-size:11px;padding:4px 10px">Last Month</button>
 <button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('thisYear')" style="font-size:11px;padding:4px 10px">This Year</button>
-<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('all')" style="font-size:11px;padding:4px 10px">All Time</button>
+<button class="btn btn-sm btn-secondary" onclick="setRevenuePreset('all')" style="font-size:11px;padding:4px 10px">All</button>
+</div>
+
+<!-- Custom date range -->
+<div class="row" style="margin-bottom:0">
+<div><label style="font-size:11px">From</label><input type="date" id="revFrom" onchange="showRevenue()"></div>
+<div><label style="font-size:11px">To</label><input type="date" id="revTo" onchange="showRevenue()"></div>
+<div style="align-self:end"><button class="btn btn-secondary btn-sm" onclick="printRevenueReport()" title="Print full report">&#128424; Print</button></div>
 </div>
 </div>
-<div class="row">
-<div><label>Date From</label><input type="date" id="revFrom"></div>
-<div><label>Date To</label><input type="date" id="revTo"></div>
-<div style="align-self:end;display:flex;gap:6px">
-<button class="btn btn-primary" onclick="showRevenue()">&#128269; Show Revenue</button>
-<button class="btn btn-secondary" onclick="printRevenueReport()" title="Print detailed report">&#128424; Print Report</button>
+
+<!-- Section tabs -->
+<div id="revSectionTabs" class="no-print" style="display:flex;gap:4px;overflow-x:auto;padding:4px 0 8px;border-bottom:2px solid var(--n200);margin-bottom:12px">
+<button class="rev-tab-btn active" data-rsection="overview" onclick="switchRevSection('overview')">📊 Overview</button>
+<button class="rev-tab-btn" data-rsection="daily" onclick="switchRevSection('daily')">📅 Daily</button>
+<button class="rev-tab-btn" data-rsection="doctor" onclick="switchRevSection('doctor')">👨‍⚕️ By Doctor</button>
+<button class="rev-tab-btn" data-rsection="collector" onclick="switchRevSection('collector')">🚚 Collection Boys</button>
+<button class="rev-tab-btn" data-rsection="operator" onclick="switchRevSection('operator')">👤 Operators</button>
+<button class="rev-tab-btn" data-rsection="payment" onclick="switchRevSection('payment')">💳 Payment Modes</button>
+<button class="rev-tab-btn" data-rsection="extras" onclick="switchRevSection('extras')">💵 Extras</button>
+<button class="rev-tab-btn" data-rsection="entries" onclick="switchRevSection('entries')">📋 All Entries</button>
 </div>
-</div>
-</div>
+
 <div id="revenueResult"></div>
 </div>
 
@@ -393,16 +419,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=39"></script>
-<script src="js/ui.js?v=39"></script>
-<script src="js/ratelist.js?v=39"></script>
-<script src="js/doctors.js?v=39"></script>
-<script src="js/entry.js?v=39"></script>
-<script src="js/register.js?v=39"></script>
-<script src="js/hisab.js?v=39"></script>
-<script src="js/revenue.js?v=39"></script>
-<script src="js/mywork.js?v=39"></script>
-<script src="js/backup.js?v=39"></script>
+<script src="js/db.js?v=40"></script>
+<script src="js/ui.js?v=40"></script>
+<script src="js/ratelist.js?v=40"></script>
+<script src="js/doctors.js?v=40"></script>
+<script src="js/entry.js?v=40"></script>
+<script src="js/register.js?v=40"></script>
+<script src="js/hisab.js?v=40"></script>
+<script src="js/revenue.js?v=40"></script>
+<script src="js/mywork.js?v=40"></script>
+<script src="js/backup.js?v=40"></script>
 
 <!-- Init -->
 <script>

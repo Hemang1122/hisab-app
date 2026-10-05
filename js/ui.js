@@ -78,6 +78,8 @@ function showTab(t, skipHistory) {
   if (t === 'ratelist') renderRateLists();
   if (t === 'doctors') renderDoctors();
   if (t === 'mywork') { if (typeof populateMyWorkOperators === 'function') populateMyWorkOperators(); if (typeof initMyWorkDates === 'function') initMyWorkDates(); }
+  if (t === 'hisab') { if (typeof refreshHDocComboLabel === 'function') refreshHDocComboLabel(); }
+  if (t === 'revenue') { if (typeof updateRevDayLabel === 'function') updateRevDayLabel(); }
   if (t === 'entry') { reloadEntryTests(); refreshSidebar(); }
 }
 
@@ -187,6 +189,80 @@ function docComboKey(e) {
   }
 }
 
+// ========== HISAB DOCTOR COMBOBOX ==========
+function refreshHDocComboLabel() {
+  let sel = document.getElementById('hDoctor');
+  let inp = document.getElementById('hDoctorSearch');
+  if (!sel || !inp) return;
+  if (!sel.value) { inp.value = ''; return; }
+  if (sel.value === '__self__') { inp.value = 'Self (Walk-in)'; return; }
+  let d = doctors.find(x => x.id === sel.value);
+  inp.value = d ? d.name : '';
+}
+
+function showHDocCombo() {
+  let dd = document.getElementById('hDoctorDropdown');
+  if (!dd) return;
+  filterHDocCombo();
+  dd.style.display = 'block';
+}
+
+function hideHDocCombo() {
+  let dd = document.getElementById('hDoctorDropdown');
+  if (dd) dd.style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+  let combos = document.querySelectorAll('.doc-combo');
+  let hDoctorCombo = document.getElementById('hDoctorDropdown') ? document.getElementById('hDoctorDropdown').closest('.doc-combo') : null;
+  if (hDoctorCombo && !hDoctorCombo.contains(e.target)) hideHDocCombo();
+});
+
+function filterHDocCombo() {
+  let dd = document.getElementById('hDoctorDropdown');
+  let inp = document.getElementById('hDoctorSearch');
+  if (!dd || !inp) return;
+  let raw = inp.value.toLowerCase().trim();
+  function norm(s) { return (s || '').toLowerCase().replace(/[(),.\-\/&]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+  let words = norm(raw).split(' ').filter(w => w.length > 0);
+  let items = [{ id: '__self__', name: 'Self (Walk-in)', isSelf: true }].concat(doctors);
+  let matches = items.filter(d => {
+    let t = norm(d.name);
+    return words.length === 0 || words.every(w => t.includes(w));
+  });
+  if (!matches.length) {
+    dd.innerHTML = '<div style="padding:10px;color:#888;font-size:12px;text-align:center">No match.</div>';
+  } else {
+    dd.innerHTML = matches.map(d =>
+      '<div class="doc-combo-item" onmousedown="pickHDoc(\'' + d.id + '\')" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0" onmouseover="this.style.background=\'#f5f5f5\'" onmouseout="this.style.background=\'\'">' +
+        (d.isSelf ? '<span style="color:#888">🚶 ' + d.name + '</span>' : d.name) +
+      '</div>'
+    ).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function pickHDoc(id) {
+  let sel = document.getElementById('hDoctor');
+  if (!sel) return;
+  sel.value = id;
+  refreshHDocComboLabel();
+  hideHDocCombo();
+}
+
+function hDocComboKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let first = document.querySelector('#hDoctorDropdown .doc-combo-item');
+    if (first) {
+      let match = first.getAttribute('onmousedown').match(/pickHDoc\('([^']+)'\)/);
+      if (match) pickHDoc(match[1]);
+    }
+  } else if (e.key === 'Escape') {
+    hideHDocCombo();
+  }
+}
+
 function manualSyncEntries() {
   let count = syncEntriesToRateList();
   if (count === 0) {
@@ -224,4 +300,5 @@ function populateDropdowns() {
   restore(regDoc, prevRegDoc);
   restore(eColl, prevEColl);
   refreshDocComboLabel();
+  if (typeof refreshHDocComboLabel === 'function') refreshHDocComboLabel();
 }

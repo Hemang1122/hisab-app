@@ -1,13 +1,20 @@
 // ========== OPERATOR TRACKING + MERA KAAM ==========
 
-// Session-scoped operator name. Cleared when browser tab closes.
+// Operator name persists across browser restarts via localStorage.
+// Click the badge to change the operator.
 function getOperator() {
-  try { return sessionStorage.getItem('hv2_operator') || ''; } catch (e) { return ''; }
+  try { return localStorage.getItem('hv2_operator') || ''; } catch (e) { return ''; }
 }
 
 function setOperatorName(name) {
-  try { sessionStorage.setItem('hv2_operator', name); } catch (e) {}
+  try { localStorage.setItem('hv2_operator', name); } catch (e) {}
   updateOperatorBadge();
+}
+
+function clearOperator() {
+  try { localStorage.removeItem('hv2_operator'); } catch (e) {}
+  updateOperatorBadge();
+  promptOperator();
 }
 
 function updateOperatorBadge() {
