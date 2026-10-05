@@ -99,11 +99,24 @@ function checkRevAccess() {
   return false;
 }
 
+// Master verification number — required to change the revenue password
+const REV_PW_MASTER_KEY = '9657581433';
+
 function saveRevPassword() {
-  settings.revPassword = document.getElementById('setRevPw').value;
+  let newPw = document.getElementById('setRevPw').value;
+  if (!newPw) return alert('Naya password daalo!');
+  // Prompt for master verification number
+  let verify = prompt('🔒 Password change karne ke liye verification number daalo:');
+  if (verify === null) return; // cancelled
+  if (verify.trim() !== REV_PW_MASTER_KEY) {
+    alert('❌ Galat verification number. Password change nahi hua.');
+    return;
+  }
+  settings.revPassword = newPw;
   saveAll();
+  if (typeof sbSaveSettings === 'function') sbSaveSettings();
   document.getElementById('setRevPw').value = '';
-  alert('Password saved!');
+  alert('✅ Password successfully changed!');
 }
 
 // ========== MODALS ==========
