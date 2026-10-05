@@ -305,7 +305,7 @@ function renderByCollector(d) {
   });
   html += '</div>';
 
-  // Per collector detailed cards
+  // Per collector detailed cards — grouped by payment mode
   collList.forEach(([name, c]) => {
     html += '<div class="card" style="border-left:4px solid var(--brand-light)">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
@@ -313,10 +313,10 @@ function renderByCollector(d) {
     html += '<div style="font-size:12px;color:#666">' + c.samples + ' samples · ' + c.tests + ' tests · ₹' + c.revenue + ' revenue</div>';
     html += '</div>';
 
-    // Payment mode breakdown chips
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+    // Payment mode summary chips
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">';
     let modeEntries = Object.entries(c.byMode).sort((a, b) => b[1] - a[1]);
-    if (modeEntries.length === 0) {
+    if (modeEntries.length === 0 && c.balance === 0) {
       html += '<div style="color:#999;font-size:12px">No payments received yet</div>';
     } else {
       modeEntries.forEach(([m, amt]) => {
@@ -324,27 +324,63 @@ function renderByCollector(d) {
         html += '<span style="background:white;border:1px solid var(--n200);border-left:3px solid ' + color + ';padding:4px 10px;border-radius:4px;font-size:12px"><b>' + m + ':</b> ₹' + amt + '</span>';
       });
     }
-    if (c.balance > 0) html += '<span style="background:#fceae8;color:var(--due);padding:4px 10px;border-radius:4px;font-size:12px">Balance Due: ₹' + c.balance + '</span>';
+    if (c.balance > 0) html += '<span style="background:#fceae8;color:var(--due);padding:4px 10px;border-radius:4px;font-size:12px"><b>Balance Due:</b> ₹' + c.balance + '</span>';
     html += '</div>';
 
-    // Patient list
-    html += '<div style="overflow-x:auto"><table style="font-size:11px"><thead><tr><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th>Mode</th><th>Status</th></tr></thead><tbody>';
-    c.patients.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name)).forEach(p => {
-      let status = p.status === 'hospital' ? '<span style="background:#e7f0fd;color:#1e4d8c;padding:1px 6px;border-radius:8px;font-size:10px">🏥 Hospital</span>' :
-                   p.status === 'due' ? '<span style="background:#fceae8;color:var(--due);padding:1px 6px;border-radius:8px;font-size:10px">Due ₹' + p.balance + '</span>' :
-                   '<span style="background:#e6f5ed;color:var(--paid);padding:1px 6px;border-radius:8px;font-size:10px">Paid</span>';
-      html += '<tr>' +
-        '<td>' + p.date + '</td>' +
-        '<td><b>' + p.name + '</b></td>' +
-        '<td style="font-size:10px">' + p.doctor + '</td>' +
-        '<td style="font-size:10px;max-width:180px">' + p.tests + '</td>' +
-        '<td style="text-align:right">₹' + p.total + '</td>' +
-        '<td style="text-align:right">₹' + p.paid + '</td>' +
-        '<td style="font-size:10px">' + p.mode + '</td>' +
-        '<td>' + status + '</td>' +
-      '</tr>';
+    // Group patients by payment mode (so Kishan's Cash patients, GPay patients, Due patients each listed separately)
+    let groups = {};
+    c.patients.forEach(p => {
+      let key;
+      if (p.status === 'hospital') key = '🏥 Hospital Paid';
+      else if (p.status === 'due') key = '⏳ Balance Due';
+      else key = '💵 ' + (p.mode || 'Cash');
+      if (!groups[key]) groups[key] = { patients: [], totalPaid: 0, totalBalance: 0 };
+      groups[key].patients.push(p);
+      groups[key].totalPaid += p.paid;
+      groups[key].totalBalance += p.balance;
     });
-    html += '</tbody></table></div></div>';
+
+    // Order: Cash first, then GPay/UPI, then others, then Hospital, then Due
+    let orderedKeys = Object.keys(groups).sort((a, b) => {
+      let order = (k) => {
+        if (k.includes('Cash')) return 1;
+        if (k.includes('GPay') || k.includes('PhonePe') || k.includes('UPI')) return 2;
+        if (k.includes('Hospital')) return 4;
+        if (k.includes('Due')) return 5;
+        return 3;
+      };
+      return order(a) - order(b);
+    });
+
+    orderedKeys.forEach(key => {
+      let g = groups[key];
+      let isDue = key.includes('Due');
+      let isHospital = key.includes('Hospital');
+      let headerColor = isDue ? '#c44536' : (isHospital ? '#1e4d8c' : (key.includes('Cash') ? '#1b874b' : '#5a3c88'));
+      let bg = isDue ? '#fceae8' : (isHospital ? '#e7f0fd' : (key.includes('Cash') ? '#e6f5ed' : '#f0ecf6'));
+
+      html += '<div style="margin-bottom:10px;border:1px solid var(--n150);border-radius:6px;overflow:hidden">';
+      html += '<div style="background:' + bg + ';color:' + headerColor + ';padding:6px 12px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center">';
+      html += '<span>' + key + ' <span style="opacity:.7;font-weight:400">(' + g.patients.length + ' patient' + (g.patients.length === 1 ? '' : 's') + ')</span></span>';
+      if (isDue) html += '<span>Total Due: ₹' + g.totalBalance + '</span>';
+      else html += '<span>Total: ₹' + g.totalPaid + '</span>';
+      html += '</div>';
+
+      html += '<div style="overflow-x:auto"><table style="font-size:11px;margin:0"><thead><tr style="background:#f5f5f5"><th style="padding:4px 8px">Date</th><th style="padding:4px 8px">Patient</th><th style="padding:4px 8px">Doctor</th><th style="padding:4px 8px">Tests</th><th style="padding:4px 8px;text-align:right">Total</th><th style="padding:4px 8px;text-align:right">' + (isDue ? 'Due' : 'Paid') + '</th></tr></thead><tbody>';
+      g.patients.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name)).forEach(p => {
+        html += '<tr>' +
+          '<td style="padding:4px 8px">' + p.date + '</td>' +
+          '<td style="padding:4px 8px"><b>' + p.name + '</b></td>' +
+          '<td style="padding:4px 8px;font-size:10px;color:#555">' + p.doctor + '</td>' +
+          '<td style="padding:4px 8px;font-size:10px;color:#777;max-width:220px">' + p.tests + '</td>' +
+          '<td style="padding:4px 8px;text-align:right">₹' + p.total + '</td>' +
+          '<td style="padding:4px 8px;text-align:right;color:' + (isDue ? '#c44536' : '#1b874b') + ';font-weight:700">₹' + (isDue ? p.balance : p.paid) + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+
+    html += '</div>';
   });
 
   return html;
@@ -717,7 +753,8 @@ function printRevenueReport() {
 
   document.getElementById('printArea').innerHTML = html;
   document.getElementById('printArea').style.display = 'block';
-  setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
+  let title = 'SBCL Revenue Report - ' + d.from + (d.to !== d.from ? ' to ' + d.to : '');
+  setTimeout(() => { printWithTitle(title); document.getElementById('printArea').style.display = 'none'; }, 200);
 }
 
 function metricBox(label, value) {

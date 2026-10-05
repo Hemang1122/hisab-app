@@ -264,6 +264,17 @@ function hDocComboKey(e) {
   }
 }
 
+// Set the document title before print so the browser's "Save as PDF"
+// uses a descriptive filename, then restores the title afterward.
+function printWithTitle(title) {
+  let original = document.title;
+  // Sanitize: remove characters bad for filenames
+  let safe = (title || 'report').replace(/[\\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  document.title = safe;
+  window.print();
+  setTimeout(() => { document.title = original; }, 300);
+}
+
 function manualSyncEntries() {
   let count = syncEntriesToRateList();
   if (count === 0) {

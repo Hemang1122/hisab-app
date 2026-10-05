@@ -297,5 +297,6 @@ function printMaterialsReport() {
 
   document.getElementById('printArea').innerHTML = html;
   document.getElementById('printArea').style.display = 'block';
-  setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
+  let title = 'SBCL Materials Report - ' + d.from + (d.to !== d.from ? ' to ' + d.to : '');
+  setTimeout(() => { printWithTitle(title); document.getElementById('printArea').style.display = 'none'; }, 200);
 }

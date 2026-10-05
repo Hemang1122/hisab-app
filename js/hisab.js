@@ -242,7 +242,11 @@ function printHisabCalc() {
   if (!el) return alert('Pehle Hisab banao!');
   document.getElementById('printArea').innerHTML = el.innerHTML;
   document.getElementById('printArea').style.display = 'block';
-  setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
+  let doc = document.getElementById('hDoctorSearch') ? document.getElementById('hDoctorSearch').value : '';
+  let from = document.getElementById('hFrom').value || '';
+  let to = document.getElementById('hTo').value || '';
+  let title = 'SBCL Hisab Calculation - ' + (doc || 'Doctor') + ' - ' + from + (to && to !== from ? ' to ' + to : '');
+  setTimeout(() => { printWithTitle(title); document.getElementById('printArea').style.display = 'none'; }, 200);
 }
 
 function buildCalcBreakdown(filtered, doc, isSelf, from, to) {
@@ -366,5 +370,10 @@ function printHisab() {
   if (!content) return alert('Pehle Hisab banao!');
   document.getElementById('printArea').innerHTML = content.innerHTML;
   document.getElementById('printArea').style.display = 'block';
-  setTimeout(() => { window.print(); document.getElementById('printArea').style.display = 'none'; }, 200);
+  // Build descriptive filename: Hisab - <Doctor> - <From> to <To>
+  let doc = document.getElementById('hDoctorSearch') ? document.getElementById('hDoctorSearch').value : '';
+  let from = document.getElementById('hFrom').value || '';
+  let to = document.getElementById('hTo').value || '';
+  let title = 'SBCL Hisab - ' + (doc || 'Doctor') + ' - ' + from + (to && to !== from ? ' to ' + to : '');
+  setTimeout(() => { printWithTitle(title); document.getElementById('printArea').style.display = 'none'; }, 200);
 }
