@@ -19,8 +19,19 @@ function showRevenue() {
   let totalTests = 0;
 
   filtered.forEach(e => {
-    let labS = 0, docS = 0;
-    e.tests.forEach(t => { labS += (t.labShare || 0); docS += (t.docShare || 0); });
+    let rawLabS = 0, rawDocS = 0;
+    e.tests.forEach(t => { rawLabS += (t.labShare || 0); rawDocS += (t.docShare || 0); });
+    // Apply discount proportionally — so Lab + Doc shares sum to the discounted test total
+    let rawSubtotal = e.subtotal || (rawLabS + rawDocS);
+    let labS = rawLabS, docS = rawDocS;
+    let testTotal = rawSubtotal - (e.discount || 0); // = total minus extra
+    if (rawSubtotal > 0 && (e.discount || 0) > 0) {
+      let scale = testTotal / rawSubtotal;
+      docS = Math.round(rawDocS * scale);
+      labS = Math.round(rawLabS * scale);
+      let drift = testTotal - (docS + labS);
+      if (drift !== 0) labS += drift;
+    }
     totalRevenue += e.total; totalLabShare += labS; totalDocShare += docS;
     totalDisc += e.discount; totalPaid += e.paid; totalBal += e.balance;
     totalTests += e.tests.length;
