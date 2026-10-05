@@ -710,9 +710,16 @@ function setDbStatus(text, cls) {
   if (s) s.textContent = text;
 }
 
+// Optional shared app secret (see SECURITY.md Option A).
+// Leave as '' until you run the Supabase RLS SQL and set a secret.
+const SB_APP_SECRET = '';
+
 function initSupabase() {
   try {
-    sb = supabase.createClient(SB_URL, SB_ANON_KEY);
+    let clientOpts = SB_APP_SECRET
+      ? { global: { headers: { 'x-app-secret': SB_APP_SECRET } } }
+      : undefined;
+    sb = supabase.createClient(SB_URL, SB_ANON_KEY, clientOpts);
     dbReady = true;
     setDbStatus('Online ✓', 'db-online');
     loadAllFromSupabase();

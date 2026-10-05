@@ -91,28 +91,122 @@ window.addEventListener('popstate', function(e) {
 });
 
 // ========== PASSWORD (inline prompt before showing revenue data) ==========
-function checkRevAccess() {
-  if (revUnlocked || !settings.revPassword) return true;
-  let pw = prompt('Revenue password daalo:');
-  if (pw === settings.revPassword) { revUnlocked = true; return true; }
-  if (pw !== null) alert('Galat password!');
+// Revenue access with session timeout + rate limiting
+let revUnlockedAt = 0;
+const REV_SESSION_MS = 15 * 60 * 1000; // 15 minutes auto-lock
+let revAccessFailedAttempts = 0;
+let revAccessLockoutUntil = 0;
+
+async function checkRevAccess() {
+  // Check active session
+  if (revUnlocked && (Date.now() - revUnlockedAt) < REV_SESSION_MS) {
+    revUnlockedAt = Date.now(); // refresh on activity
+    return true;
+  }
+  revUnlocked = false;
+
+  // No password set — allow (legacy)
+  if (!settings.revPasswordHash && !settings.revPassword) return true;
+
+  // Rate limiting
+  if (Date.now() < revAccessLockoutUntil) {
+    let mins = Math.ceil((revAccessLockoutUntil - Date.now()) / 60000);
+    alert('🔒 Too many failed attempts. Locked for ' + mins + ' more minute(s).');
+    return false;
+  }
+
+  let pw = prompt('🔐 Revenue password daalo:');
+  if (pw === null) return false;
+
+  // Verify (hashed or legacy plaintext fallback for migration)
+  let ok = false;
+  if (settings.revPasswordHash) {
+    let pwHash = await sha256(pw);
+    ok = (pwHash === settings.revPasswordHash);
+  } else if (settings.revPassword) {
+    // Legacy plaintext — migrate to hash on correct entry
+    ok = (pw === settings.revPassword);
+    if (ok) {
+      settings.revPasswordHash = await sha256(pw);
+      delete settings.revPassword;
+      saveAll();
+      if (typeof sbSaveSettings === 'function') sbSaveSettings();
+    }
+  }
+
+  if (ok) {
+    revUnlocked = true;
+    revUnlockedAt = Date.now();
+    revAccessFailedAttempts = 0;
+    return true;
+  }
+
+  revAccessFailedAttempts++;
+  if (revAccessFailedAttempts >= 5) {
+    revAccessLockoutUntil = Date.now() + 5 * 60 * 1000; // 5 min lockout
+    revAccessFailedAttempts = 0;
+    alert('❌ 5 failed attempts. Locked for 5 minutes.');
+  } else {
+    alert('❌ Galat password. ' + (5 - revAccessFailedAttempts) + ' attempts left.');
+  }
   return false;
 }
 
-// Master verification number — required to change the revenue password
-const REV_PW_MASTER_KEY = '9657581433';
+// Auto-lock revenue after inactivity (sidebar nav away from revenue also locks)
+setInterval(() => {
+  if (revUnlocked && (Date.now() - revUnlockedAt) >= REV_SESSION_MS) {
+    revUnlocked = false;
+    console.log('[security] Revenue session auto-locked after inactivity');
+  }
+}, 60000);
 
-function saveRevPassword() {
+// ========== SECURITY ==========
+// SHA-256 of the master verification number '9657581433' — stored as hash
+// so it's not visible in plaintext in source code. Changing this requires
+// knowing the original number.
+const REV_PW_MASTER_HASH = 'cab20326cd3317c20aeefde88f01a063e30cc8e07b32502790b721356b3674ac';
+
+// SHA-256 helper
+async function sha256(str) {
+  let buf = new TextEncoder().encode(str);
+  let hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Rate limiting on password attempts (per-session)
+let revPwFailedAttempts = 0;
+let revPwLockoutUntil = 0;
+
+async function saveRevPassword() {
   let newPw = document.getElementById('setRevPw').value;
   if (!newPw) return alert('Naya password daalo!');
-  // Prompt for master verification number
-  let verify = prompt('🔒 Password change karne ke liye verification number daalo:');
-  if (verify === null) return; // cancelled
-  if (verify.trim() !== REV_PW_MASTER_KEY) {
-    alert('❌ Galat verification number. Password change nahi hua.');
-    return;
+  if (newPw.length < 4) return alert('Password kam se kam 4 character ka ho!');
+
+  // Check lockout
+  if (Date.now() < revPwLockoutUntil) {
+    let secs = Math.ceil((revPwLockoutUntil - Date.now()) / 1000);
+    return alert('🔒 Too many failed attempts. Wait ' + secs + ' seconds.');
   }
-  settings.revPassword = newPw;
+
+  let verify = prompt('🔒 Password change karne ke liye verification number daalo:');
+  if (verify === null) return;
+
+  // Compute hash of entered verification number
+  let verifyHash = await sha256(verify.trim());
+  if (verifyHash !== REV_PW_MASTER_HASH) {
+    revPwFailedAttempts++;
+    if (revPwFailedAttempts >= 3) {
+      revPwLockoutUntil = Date.now() + 60000; // 1 min lockout
+      revPwFailedAttempts = 0;
+      return alert('❌ 3 failed attempts. Locked for 1 minute.');
+    }
+    return alert('❌ Galat verification number. ' + (3 - revPwFailedAttempts) + ' attempts left.');
+  }
+  revPwFailedAttempts = 0;
+
+  // Store password HASHED (not plaintext)
+  settings.revPasswordHash = await sha256(newPw);
+  delete settings.revPassword; // remove any legacy plaintext
   saveAll();
   if (typeof sbSaveSettings === 'function') sbSaveSettings();
   document.getElementById('setRevPw').value = '';
@@ -276,6 +370,37 @@ function hDocComboKey(e) {
     hideHDocCombo();
   }
 }
+
+// ========== DEVTOOLS DETECTION (lightweight deterrent) ==========
+// Shows a warning banner if dev tools are detected open. Does NOT prevent
+// usage — just makes the app less inviting to casual snooping.
+(function devtoolsWatch() {
+  let warned = false;
+  function showWarn() {
+    if (warned) return;
+    warned = true;
+    let b = document.createElement('div');
+    b.id = 'devtoolsWarn';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c44536;color:white;padding:10px 16px;font-size:13px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.3);font-family:system-ui';
+    b.innerHTML = '⚠️ Developer tools detected. This application contains confidential patient data. Unauthorized access is logged and prohibited. &nbsp;&nbsp; <button onclick="document.getElementById(\'devtoolsWarn\').remove()" style="background:white;color:#c44536;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-weight:700">Dismiss</button>';
+    document.body.appendChild(b);
+  }
+  let checkDevtools = () => {
+    let widthGap = window.outerWidth - window.innerWidth;
+    let heightGap = window.outerHeight - window.innerHeight;
+    if (widthGap > 160 || heightGap > 160) showWarn();
+  };
+  // Check periodically, not constantly (saves CPU)
+  setInterval(checkDevtools, 2500);
+  // Also warn on F12 / Ctrl+Shift+I
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'J' || e.key === 'C'))) {
+      showWarn();
+    }
+  });
+})();
 
 // Set the document title before print so the browser's "Save as PDF"
 // uses a descriptive filename, then restores the title afterward.

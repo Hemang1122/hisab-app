@@ -9,8 +9,8 @@ function switchRevSection(section) {
   renderRevenueSection();
 }
 
-function showRevenue() {
-  if (!checkRevAccess()) return;
+async function showRevenue() {
+  if (!(await checkRevAccess())) return;
   let from = document.getElementById('revFrom').value, to = document.getElementById('revTo').value;
   if (!from || !to) return alert('Date range select karo!');
 
