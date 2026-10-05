@@ -29,13 +29,19 @@ function addRLTest(data) {
   let n = data ? data.name : '', r = data ? data.rate : '', tp = data ? data.type : 'normal';
   let cds = data && data.customDocShare != null ? data.customDocShare : '';
   let cls = data && data.customLabShare != null ? data.customLabShare : '';
+  let reagent = data && data.reagentCost != null ? data.reagentCost : '';
   div.innerHTML = '<button class="del-btn" onclick="this.parentElement.remove()" style="position:absolute;right:4px;top:4px">✕</button>' +
     '<input placeholder="Test name" value="' + n + '" class="rlt-name" style="margin-bottom:4px" oninput="this.parentElement.dataset.testname=this.value.toLowerCase()">' +
-    '<div style="display:flex;gap:6px">' +
+    '<div style="display:flex;gap:6px;margin-bottom:4px">' +
     '<input type="number" placeholder="Rate ₹" value="' + r + '" class="rlt-rate" style="width:34%">' +
     '<select class="rlt-type" style="width:22%"><option value="normal" ' + (tp === 'normal' ? 'selected' : '') + '>Normal</option><option value="special" ' + (tp === 'special' ? 'selected' : '') + '>Special</option></select>' +
     '<input type="number" placeholder="Dr ₹" value="' + cds + '" class="rlt-doc-share" style="width:22%" title="Custom Doctor Share (leave empty for auto)">' +
     '<input type="number" placeholder="Lab ₹" value="' + cls + '" class="rlt-lab-share" style="width:22%" title="Custom Lab Share (leave empty for auto)">' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;align-items:center">' +
+    '<small style="color:#888;font-size:11px;flex-shrink:0">🧪 Reagent Cost:</small>' +
+    '<input type="number" placeholder="0" value="' + reagent + '" class="rlt-reagent" style="width:80px" title="Cost of reagent/consumable per test">' +
+    '<small style="color:#aaa;font-size:10px">(₹ per test — for material cost tracking)</small>' +
     '</div>';
   let container = document.getElementById('rlTestRows');
   if (isNew) {
@@ -72,8 +78,10 @@ function saveRateList() {
     let t = div.querySelector('.rlt-type').value;
     let cdsRaw = div.querySelector('.rlt-doc-share').value.trim();
     let clsRaw = div.querySelector('.rlt-lab-share').value.trim();
+    let reagentRaw = (div.querySelector('.rlt-reagent') || {}).value || '';
     if (!n) return;
     let test = { name: n, rate: r, type: t };
+    if (reagentRaw !== '') test.reagentCost = parseFloat(reagentRaw) || 0;
     // If either custom share is set, save both (auto-fill the other)
     if (cdsRaw !== '' || clsRaw !== '') {
       let cds = cdsRaw !== '' ? parseFloat(cdsRaw) || 0 : null;
@@ -117,14 +125,16 @@ function renderRateLists() {
     let hasCustom = t.customDocShare != null && t.customLabShare != null;
     let docShareTxt = hasCustom ? '₹' + t.customDocShare : '<span style="color:#aaa">auto</span>';
     let labShareTxt = hasCustom ? '₹' + t.customLabShare : '<span style="color:#aaa">auto</span>';
+    let reagentTxt = t.reagentCost != null && t.reagentCost > 0 ? '₹' + t.reagentCost : '<span style="color:#aaa">-</span>';
     return '<tr class="rl-test-row" data-rlid="' + rl.id + '" data-testname="' + t.name.toLowerCase() + '" data-incomplete="' + (isIncomplete ? '1' : '0') + '"' + incomplete + '>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'name\',this)">' + t.name + warn + '</td>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'type\',this)"><span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span></td>' +
       '<td style="' + ec + '" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'rate\',this)">₹' + (t.rate || 0) + '</td>' +
       '<td style="' + ec + ';text-align:center;font-size:11px" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'customDocShare\',this)">' + docShareTxt + '</td>' +
       '<td style="' + ec + ';text-align:center;font-size:11px" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'customLabShare\',this)">' + labShareTxt + '</td>' +
+      '<td style="' + ec + ';text-align:center;font-size:11px;color:#555" onclick="inlineEditField(\'' + rl.id + '\',' + idx + ',\'reagentCost\',this)">' + reagentTxt + '</td>' +
       '</tr>';
-  }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
+  }).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--n400);padding:15px">Koi test nahi — Edit karo aur tests add karo</td></tr>';
 
   // Search + filter toolbar
   let toolbar = '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">' +
@@ -146,7 +156,7 @@ function renderRateLists() {
     '<button class="btn btn-sm btn-primary" onclick="openRLModal(\'' + rl.id + '\')" style="font-size:11px;padding:4px 8px">Edit All</button></div></div>' +
     (docSplits ? '<div style="margin-bottom:8px"><small style="color:#666">Doctor Splits:</small><br>' + docSplits + '</div>' : '') +
     '<div><button class="btn btn-sm btn-secondary" onclick="toggleRLTests(this)" style="font-size:12px">▶ Show Tests (' + countBadge + ')</button>' +
-    '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th style="text-align:center">Dr. Share</th><th style="text-align:center">Lab Share</th></tr>' + rows + '</table></div></div></div>';
+    '<div class="rl-tests-wrap" style="display:none;margin-top:6px">' + toolbar + '<table><tr><th>Test</th><th>Type</th><th>Rate</th><th style="text-align:center">Dr. Share</th><th style="text-align:center">Lab Share</th><th style="text-align:center" title="Reagent cost per test">🧪 Reagent</th></tr>' + rows + '</table></div></div></div>';
 }
 
 function toggleRLTests(btn) {
@@ -260,7 +270,7 @@ function inlineEditField(rlId, idx, field, td) {
     return;
   }
 
-  let isNum = (field === 'rate' || field === 'customDocShare' || field === 'customLabShare');
+  let isNum = (field === 'rate' || field === 'customDocShare' || field === 'customLabShare' || field === 'reagentCost');
   let input = document.createElement('input');
   input.type = isNum ? 'number' : 'text';
   input.placeholder = (field === 'customDocShare' || field === 'customLabShare') ? 'auto' : '';
@@ -288,6 +298,10 @@ function inlineEditField(rlId, idx, field, td) {
           t.customDocShare = Math.max(0, (t.rate || 0) - val);
         }
       }
+    } else if (field === 'reagentCost') {
+      let raw = input.value.trim();
+      if (raw === '') { delete t.reagentCost; }
+      else t.reagentCost = parseFloat(raw) || 0;
     } else {
       let val = isNum ? (parseFloat(input.value) || 0) : input.value.trim();
       if (field === 'name' && !val) val = oldVal;
@@ -319,6 +333,11 @@ function updateRLRow(row, rl, rlId, idx) {
   cells[2].style.cssText = ec; cells[2].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'rate',this)"); cells[2].textContent = '₹' + (t.rate || 0);
   cells[3].style.cssText = ec + ';text-align:center;font-size:11px'; cells[3].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'customDocShare',this)"); cells[3].innerHTML = hasCustom ? '₹' + t.customDocShare : '<span style="color:#aaa">auto</span>';
   cells[4].style.cssText = ec + ';text-align:center;font-size:11px'; cells[4].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'customLabShare',this)"); cells[4].innerHTML = hasCustom ? '₹' + t.customLabShare : '<span style="color:#aaa">auto</span>';
+  if (cells[5]) {
+    cells[5].style.cssText = ec + ';text-align:center;font-size:11px;color:#555';
+    cells[5].setAttribute('onclick', "inlineEditField('" + rlId + "'," + idx + ",'reagentCost',this)");
+    cells[5].innerHTML = t.reagentCost != null && t.reagentCost > 0 ? '₹' + t.reagentCost : '<span style="color:#aaa">-</span>';
+  }
 }
 
 function saveRLTestFieldQuiet(rl, rlId) {

@@ -34,7 +34,8 @@ function showRevenue() {
   let d = { from, to, filtered };
   d.totalRevenue = 0; d.totalLabShare = 0; d.totalDocShare = 0;
   d.totalDisc = 0; d.totalPaid = 0; d.totalBal = 0; d.totalExtras = 0; d.totalTests = 0;
-  d.extraEntries = []; d.byDoctor = {}; d.byPayMode = {}; d.byCollector = {}; d.byDate = {}; d.byOperator = {};
+  d.totalReagent = 0;
+  d.extraEntries = []; d.byDoctor = {}; d.byPayMode = {}; d.byCollector = {}; d.byDate = {}; d.byOperator = {}; d.byTest = {};
 
   filtered.forEach(e => {
     // Raw shares from stored data
@@ -53,6 +54,18 @@ function showRevenue() {
     d.totalRevenue += e.total; d.totalLabShare += labS; d.totalDocShare += docS;
     d.totalDisc += (e.discount || 0); d.totalPaid += e.paid; d.totalBal += e.balance;
     d.totalTests += e.tests.length;
+
+    // Per-test aggregation (for materials/reagent cost tracking)
+    e.tests.forEach(t => {
+      let tName = t.name || 'Unknown';
+      if (!d.byTest[tName]) d.byTest[tName] = { count: 0, revenue: 0, reagentCost: 0, reagentPerTest: t.reagentCost || 0, labShare: 0, docShare: 0, type: t.type || 'normal' };
+      d.byTest[tName].count++;
+      d.byTest[tName].revenue += (t.rate || 0);
+      d.byTest[tName].reagentCost += (t.reagentCost || 0);
+      d.byTest[tName].labShare += (t.labShare || 0);
+      d.byTest[tName].docShare += (t.docShare || 0);
+      d.totalReagent += (t.reagentCost || 0);
+    });
 
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(x => x.id === e.doctorId) : null;
     let currentDocName = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : 'Unknown'));
@@ -147,6 +160,7 @@ function renderRevenueSection() {
     case 'operator': html = renderByOperator(d); break;
     case 'payment': html = renderByPayment(d); break;
     case 'extras': html = renderExtras(d); break;
+    case 'materials': html = renderMaterials(d); break;
     case 'entries': html = renderAllEntries(d); break;
   }
   document.getElementById('revenueResult').innerHTML = html;
@@ -168,6 +182,15 @@ function renderOverview(d) {
   html += statCard('purple', 'Doctor Share', d.totalDocShare);
   html += statCard('red', 'Discounts Given', d.totalDisc);
   html += statCard('yellow', 'Extra Collected', d.totalExtras);
+  html += '</div>';
+
+  // Reagent cost + estimated lab profit
+  let labProfit = d.totalLabShare - d.totalReagent;
+  html += '<div class="stat-grid">';
+  html += statCard('red', '🧪 Reagent Cost', d.totalReagent);
+  html += statCard('green', '📈 Lab Profit (est)', labProfit);
+  html += statCard('blue', 'Cost / Patient', d.filtered.length ? Math.round(d.totalReagent / d.filtered.length) : 0);
+  html += statCard('purple', 'Profit Margin', d.totalLabShare > 0 ? Math.round(labProfit / d.totalLabShare * 100) + '%' : '-', true);
   html += '</div>';
 
   html += '<div class="stat-grid">';
@@ -398,6 +421,71 @@ function renderExtras(d) {
   return html;
 }
 
+// ========== MATERIALS / REAGENT COST ==========
+function renderMaterials(d) {
+  let testList = Object.entries(d.byTest).sort((a, b) => b[1].reagentCost - a[1].reagentCost);
+  if (!testList.length) return '<div class="card"><div class="empty">No tests in this range.</div></div>';
+
+  let labProfit = d.totalLabShare - d.totalReagent;
+  let avgMargin = d.totalLabShare > 0 ? (labProfit / d.totalLabShare * 100) : 0;
+
+  let html = '';
+  // Hero stats
+  html += '<div class="stat-grid">';
+  html += statCard('red', '🧪 Total Reagent Cost', d.totalReagent);
+  html += statCard('green', '💰 Lab Share (gross)', d.totalLabShare);
+  html += statCard('blue', '📈 Lab Profit (net)', labProfit);
+  html += statCard('yellow', 'Profit Margin', Math.round(avgMargin) + '%', true);
+  html += '</div>';
+
+  html += '<div class="card" style="background:#fffbf3;border-left:4px solid var(--accent)">';
+  html += '<p style="font-size:12px;color:#666;margin:0 0 4px"><b>How this is calculated:</b> Each test has a reagent/consumable cost set in the Rate List. When you perform a test, that cost is subtracted from your Lab Share to estimate net profit. Default costs are typical Indian-market mid-tier estimates — adjust them in Rate List to match your actual supplier prices.</p>';
+  html += '</div>';
+
+  // Per-test breakdown
+  html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🧪 Material Consumption by Test</h3>';
+  html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Test</th><th style="text-align:right">Count</th><th style="text-align:right" title="Reagent cost per test">Per-Test ₹</th><th style="text-align:right">Total Reagent ₹</th><th style="text-align:right">Rate ₹ (total)</th><th style="text-align:right">Lab Share ₹</th><th style="text-align:right">Net Profit ₹</th><th style="text-align:right">Margin</th></tr></thead><tbody>';
+  testList.forEach(([n, x]) => {
+    let profit = x.labShare - x.reagentCost;
+    let margin = x.labShare > 0 ? Math.round(profit / x.labShare * 100) : 0;
+    let marginColor = margin >= 50 ? 'var(--paid)' : margin >= 20 ? 'var(--accent)' : 'var(--danger)';
+    html += '<tr>' +
+      '<td><b>' + n + '</b> <small style="color:#999">· ' + x.type + '</small></td>' +
+      '<td style="text-align:right">' + x.count + '</td>' +
+      '<td style="text-align:right">₹' + x.reagentPerTest + '</td>' +
+      '<td style="text-align:right;color:var(--danger)"><b>₹' + x.reagentCost + '</b></td>' +
+      '<td style="text-align:right">₹' + x.revenue + '</td>' +
+      '<td style="text-align:right">₹' + x.labShare + '</td>' +
+      '<td style="text-align:right;color:' + marginColor + ';font-weight:700">₹' + profit + '</td>' +
+      '<td style="text-align:right;color:' + marginColor + '">' + margin + '%</td>' +
+    '</tr>';
+  });
+  html += '<tr style="background:var(--n100);font-weight:700">' +
+    '<td>Grand Total</td><td style="text-align:right">' + d.totalTests + '</td><td></td>' +
+    '<td style="text-align:right;color:var(--danger)">₹' + d.totalReagent + '</td>' +
+    '<td style="text-align:right">—</td>' +
+    '<td style="text-align:right">₹' + d.totalLabShare + '</td>' +
+    '<td style="text-align:right;color:' + (labProfit > 0 ? 'var(--paid)' : 'var(--danger)') + '">₹' + labProfit + '</td>' +
+    '<td style="text-align:right">' + Math.round(avgMargin) + '%</td>' +
+  '</tr>';
+  html += '</tbody></table></div></div>';
+
+  // Tests without reagent cost set
+  let missing = testList.filter(([, x]) => !x.reagentPerTest);
+  if (missing.length) {
+    html += '<div class="card" style="background:#fff8ee;border-left:4px solid var(--accent)">';
+    html += '<h4 style="font-size:13px;margin:0 0 6px;color:var(--accent)">⚠️ ' + missing.length + ' test(s) have no reagent cost set</h4>';
+    html += '<p style="font-size:11px;color:#666;margin:0 0 8px">Set the reagent cost in Rate List → click the 🧪 Reagent cell for each test. Profit margins for these are overestimated.</p>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    missing.forEach(([n, x]) => {
+      html += '<span style="background:white;border:1px solid #e8d3a8;padding:2px 8px;border-radius:10px;font-size:11px">' + n + ' · ' + x.count + '×</span>';
+    });
+    html += '</div></div>';
+  }
+
+  return html;
+}
+
 // ========== ALL ENTRIES ==========
 function renderAllEntries(d) {
   let html = '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📋 All Entries (' + d.filtered.length + ')</h3>';
@@ -428,7 +516,8 @@ function renderAllEntries(d) {
 // ========== HELPERS ==========
 function statCard(color, label, value, isCount) {
   let prefix = isCount ? '' : '&#8377;';
-  return '<div class="stat-card ' + color + '"><div class="stat-label">' + label + '</div><div class="stat-value">' + prefix + value.toLocaleString('en-IN') + '</div></div>';
+  let display = (typeof value === 'number') ? value.toLocaleString('en-IN') : value;
+  return '<div class="stat-card ' + color + '"><div class="stat-label">' + label + '</div><div class="stat-value">' + prefix + display + '</div></div>';
 }
 
 function formatDate(dateStr) {

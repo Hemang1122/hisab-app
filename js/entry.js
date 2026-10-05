@@ -279,7 +279,7 @@ function getSelectedTests() {
     if (rl.tests[idx]) {
       let t = rl.tests[idx];
       let shares = calcShares(t.rate, docPercent, t);
-      selected.push({ name: t.name, rate: t.rate, type: t.type, labShare: shares.labShare, docShare: shares.docShare });
+      selected.push({ name: t.name, rate: t.rate, type: t.type, labShare: shares.labShare, docShare: shares.docShare, reagentCost: t.reagentCost || 0 });
     }
   });
   return selected;

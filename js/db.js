@@ -55,6 +55,120 @@ const SPECIAL_TESTS_FROM_PDF = [
 ];
 
 // Additional commonly requested clinical lab tests — rate=0, user sets price + split
+// Reagent / consumable cost per test for COMMON (in-house) tests — in ₹
+// These are typical mid-tier Indian lab figures (3-part analyzer / semi-auto
+// biochemistry). Lab should adjust per their actual supplier pricing.
+// Based on web research of Indian reagent kit pricing (Oct 2026).
+const REAGENT_COST_PER_TEST = {
+  // Hematology (3-part analyzer)
+  'cbc (complete blood count)': 20,
+  'esr': 3,
+  'blood group & rh': 5,
+  'bt ct (bleeding/clotting time)': 2,
+  'peripheral smear': 5,
+  'platelet count': 15,
+  'reticulocyte count': 10,
+  'mp (malaria parasite)': 3,
+  // Glucose / Diabetes
+  'hba1c (glycated hb)': 80,
+  'bsf (blood sugar fasting)': 3,
+  'bspp (blood sugar post prandial)': 3,
+  'rbs (random blood sugar)': 3,
+  'bsf bspp': 6,
+  // Biochemistry (per parameter)
+  'urea': 4,
+  'creatinine': 4,
+  'uric acid': 5,
+  'cholesterol': 5,
+  'triglycerides': 6,
+  'sgot (ast)': 5,
+  'sgpt (alt)': 5,
+  'albumin': 4,
+  'total protein': 4,
+  'bilirubin (total/direct)': 6,
+  'alk phosphatase': 5,
+  'calcium': 5,
+  'phosphorous': 6,
+  'ggt': 6,
+  'amylase': 15,
+  'lipase': 25,
+  'cpk total': 20,
+  'cpk-mb': 25,
+  'electrolyte (na/k/cl)': 40,
+  'ldh': 15,
+  // Panels (bundled per-parameter)
+  'lipid profile': 20,
+  'lft (liver function test)': 30,
+  'rft (renal function test)': 25,
+  'kft (kidney function test)': 25,
+  'thyroid profile (t3/t4/tsh)': 100,
+  // Serology / Infection
+  'widal test': 10,
+  'vdrl': 5,
+  'ra factor': 15,
+  'aso titre': 20,
+  'ra + ast (combined)': 20,
+  'crp': 25,
+  'hbsag': 25,
+  'hcv': 40,
+  'hiv i & ii': 25,
+  'dengue ns1': 90,
+  'dengue profile (ns1+igg+igm)': 180,
+  'chikungunya igm': 110,
+  'typhi dot (typhoid)': 60,
+  'leptospira igg/igm': 150,
+  'trop-i (troponin i)': 150,
+  'trop-i': 150,
+  // Coagulation
+  'pt/inr': 30,
+  'aptt': 35,
+  'd-dimer': 200,
+  'hhh (triple h)': 90,
+  // Advanced
+  'abg (arterial blood gas)': 180,
+  'nt-probnp': 450,
+  'psa (prostate)': 150,
+  // TB / Fungal
+  'mantoux test': 5,
+  'm panti (montepanti)': 60,
+  'afb stain (tb)': 10,
+  'gram stain': 5,
+  'koh mount (fungal)': 5,
+  // Urine
+  'urine routine/microscopy': 5,
+  'upt (urine pregnancy)': 10,
+  'urine culture & sensitivity': 60,
+  'microalbumin (urine)': 25,
+  // Stool
+  'stool routine/microscopy': 3,
+  'stool occult blood': 8,
+  // Other
+  'semen analysis': 5,
+  'blood culture & ast': 180,
+  'pus culture & ast': 180,
+  'sputum culture & ast': 180,
+  'fever profile': 60,
+  'body profile': 180,
+  // Common extended
+  'prothrombin time (pt)': 30,
+  'fibrinogen': 60,
+  'bleeding time (bt)': 2,
+  'clotting time (ct)': 2,
+  'absolute eosinophil count (aec)': 10,
+  'serum iron': 30,
+  'tibc (total iron binding capacity)': 35,
+  'ferritin': 90,
+  'folic acid / folate': 100,
+  'direct ldl': 15,
+  'hdl cholesterol': 10,
+  'ldl cholesterol': 10,
+  'vldl': 5,
+  'free t3 (ft3)': 60,
+  'free t4 (ft4)': 60,
+  'magnesium': 10,
+  'ionized calcium': 25,
+};
+
 const ADDITIONAL_COMMON_TESTS = [
   // === COAGULATION / HEMATOLOGY ===
   { name: 'Prothrombin Time (PT)', type: 'normal' },
@@ -410,12 +524,15 @@ function syncEntriesToRateList() {
       let master = nameMap[keyOf(t.name)];
       if (master) {
         let newShares = calcShares(master.rate, docPct, master);
+        let masterReagent = master.reagentCost || 0;
         if (t.rate !== master.rate || t.type !== master.type ||
-            t.labShare !== newShares.labShare || t.docShare !== newShares.docShare) {
+            t.labShare !== newShares.labShare || t.docShare !== newShares.docShare ||
+            (t.reagentCost || 0) !== masterReagent) {
           t.rate = master.rate;
           t.type = master.type;
           t.labShare = newShares.labShare;
           t.docShare = newShares.docShare;
+          t.reagentCost = masterReagent;
           entryChanged = true;
         }
       }
@@ -501,6 +618,7 @@ function migrateData() {
     let ct = { name: t.name, rate: t.rate, type: t.type };
     if (t.customDocShare != null) ct.customDocShare = t.customDocShare;
     if (t.customLabShare != null) ct.customLabShare = t.customLabShare;
+    if (t.reagentCost != null) ct.reagentCost = t.reagentCost;
     return ct;
   }
   if (rateLists.length > 1 || (rateLists.length === 1 && rateLists[0].id !== 'rl_master')) {
@@ -543,6 +661,19 @@ function migrateData() {
       changed = true;
       console.log('Added ' + added + ' tests to rate list');
     }
+
+    // Seed reagentCost per test (only if not already set)
+    let costSeeded = 0;
+    rl.tests.forEach(t => {
+      if (t.reagentCost == null) {
+        let key = (t.name || '').toLowerCase().trim();
+        if (REAGENT_COST_PER_TEST[key] != null) {
+          t.reagentCost = REAGENT_COST_PER_TEST[key];
+          costSeeded++;
+        }
+      }
+    });
+    if (costSeeded > 0) { changed = true; console.log('Seeded reagent cost for ' + costSeeded + ' tests'); }
   }
 
   if (changed) {
