@@ -613,6 +613,14 @@ async function loadAllFromSupabase() {
 
     saveLocal();
     migrateData(); // Convert old format to new single-rate-list + docPercent
+
+    // Sync every entry to current master rate list (applies any custom splits
+    // or price edits made in Rate List to past entries automatically)
+    let updated = syncEntriesToRateList();
+    if (updated > 0 && typeof toast === 'function') {
+      toast('🔄 ' + updated + ' past ' + (updated === 1 ? 'entry' : 'entries') + ' updated to current rates');
+    }
+
     setDbStatus('Online ✓', 'db-online');
 
     // Refresh UI after sync
