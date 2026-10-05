@@ -21,7 +21,7 @@ function generateHisab() {
   if (!filtered.length) { document.getElementById('hisabResult').innerHTML = '<div class="empty">No entries found in this date range.</div>'; return; }
 
   // Hisab print IGNORES the extra amount entirely — only shows original test-based totals
-  // Discount is applied PROPORTIONALLY to Dr and Lab shares so they sum to the discounted total
+  // Discount applied PROPORTIONALLY to both Dr and Lab shares (equal reduction, no drift dump)
   let grandTotal = 0, grandDoc = 0, grandLab = 0, grandDiscount = 0, grandPaid = 0, grandBal = 0, grandHospital = 0;
   let hospitalCount = 0;
   let rows = filtered.map((e, i) => {
@@ -29,16 +29,14 @@ function generateHisab() {
     e.tests.forEach(t => { rawDocS += (t.docShare || 0); rawLabS += (t.labShare || 0); });
     // Original total = what tests cost minus discount (extra is excluded from hisab)
     let origTotal = (e.total || 0) - (e.extra || 0);
-    // Apply discount proportionally to Dr and Lab shares
+    // Scale shares down by discount factor — each proportionally reduced
     let origSubtotal = e.subtotal || (rawDocS + rawLabS);
     let docS = rawDocS, labS = rawLabS;
     if (origSubtotal > 0 && (e.discount || 0) > 0) {
-      let scale = origTotal / origSubtotal;
-      docS = Math.round(rawDocS * scale);
-      labS = Math.round(rawLabS * scale);
-      // Fix any rounding drift so docS + labS == origTotal
-      let drift = origTotal - (docS + labS);
-      if (drift !== 0) labS += drift;
+      let discountFactor = 1 - ((e.discount || 0) / origSubtotal);
+      if (discountFactor < 0) discountFactor = 0;
+      docS = Math.round(rawDocS * discountFactor);
+      labS = Math.round(rawLabS * discountFactor);
     }
     // Paid amount capped to original total, balance based on original
     let origPaid = Math.min(e.paid || 0, origTotal);

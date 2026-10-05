@@ -30,16 +30,14 @@ function showRevenue() {
   filtered.forEach(e => {
     let rawLabS = 0, rawDocS = 0;
     e.tests.forEach(t => { rawLabS += (t.labShare || 0); rawDocS += (t.docShare || 0); });
-    // Apply discount proportionally — so Lab + Doc shares sum to the discounted test total
+    // Apply discount proportionally — both Dr and Lab shares reduced equally
     let rawSubtotal = e.subtotal || (rawLabS + rawDocS);
     let labS = rawLabS, docS = rawDocS;
-    let testTotal = rawSubtotal - (e.discount || 0); // = total minus extra
     if (rawSubtotal > 0 && (e.discount || 0) > 0) {
-      let scale = testTotal / rawSubtotal;
-      docS = Math.round(rawDocS * scale);
-      labS = Math.round(rawLabS * scale);
-      let drift = testTotal - (docS + labS);
-      if (drift !== 0) labS += drift;
+      let discountFactor = 1 - ((e.discount || 0) / rawSubtotal);
+      if (discountFactor < 0) discountFactor = 0;
+      docS = Math.round(rawDocS * discountFactor);
+      labS = Math.round(rawLabS * discountFactor);
     }
     totalRevenue += e.total; totalLabShare += labS; totalDocShare += docS;
     totalDisc += e.discount; totalPaid += e.paid; totalBal += e.balance;
