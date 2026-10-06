@@ -49,11 +49,33 @@ function saveOperator() {
   if (typeof toast === 'function') toast('👤 Welcome ' + name + '!');
 }
 
-// Initialise on load — show modal if no operator yet
+// ========== SPLASH SCREEN FLOW ==========
+// Flow: Splash → (if no operator) Operator Modal → App
+
+function splashNext() {
+  let splash = document.getElementById('splashScreen');
+  if (!splash) return;
+  splash.classList.add('hiding');
+  setTimeout(() => {
+    splash.classList.add('hidden');
+    // After splash hides, check if we need operator name
+    if (!getOperator()) {
+      setTimeout(() => promptOperator(), 200);
+    } else {
+      if (typeof toast === 'function') toast('👤 Welcome back, ' + getOperator() + '!');
+    }
+  }, 600);
+}
+
+// Initialise on load — show splash always, operator modal only if needed
 function initOperator() {
   updateOperatorBadge();
-  if (!getOperator()) {
-    setTimeout(() => promptOperator(), 400);
+  // Splash handles the operator prompt flow via splashNext()
+  // If there's no splash screen (shouldn't happen), fall back to old behavior
+  if (!document.getElementById('splashScreen')) {
+    if (!getOperator()) {
+      setTimeout(() => promptOperator(), 400);
+    }
   }
 }
 
