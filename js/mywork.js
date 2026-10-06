@@ -198,8 +198,8 @@ function populateMyWorkOperators() {
   let currentOp = getOperator();
   if (currentOp) ops.add(currentOp);
   let opsList = Array.from(ops).sort();
-  sel.innerHTML = '<option value="__me__">Just Me (' + (currentOp || '-') + ')</option>' +
-    '<option value="__all__">All Operators</option>' +
+  sel.innerHTML = '<option value="__all__">All Operators</option>' +
+    '<option value="__me__">Just Me (' + (currentOp || '-') + ')</option>' +
     opsList.map(op => '<option value="op:' + op.replace(/"/g, '&quot;') + '">' + op + '</option>').join('');
   if (prev) sel.value = prev;
 }
