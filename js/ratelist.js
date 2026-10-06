@@ -251,7 +251,7 @@ function printRateList(rlId) {
 
   document.getElementById('printArea').innerHTML = html;
   document.getElementById('printArea').style.display = 'block';
-  let today = new Date().toISOString().slice(0, 10);
+  let today = localDateStr();
   let title = 'SBCL Rate List - ' + today;
   setTimeout(() => { printWithTitle(title); document.getElementById('printArea').style.display = 'none'; }, 200);
 }

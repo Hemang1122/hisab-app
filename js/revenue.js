@@ -225,7 +225,7 @@ function renderDaily(d) {
   let allDates = [];
   let cur = new Date(d.from + 'T00:00:00'), endD = new Date(d.to + 'T00:00:00');
   while (cur <= endD) {
-    let s = cur.toISOString().slice(0, 10);
+    let s = localDateStr(cur);
     allDates.push([s, d.byDate[s] || { count: 0, revenue: 0, paid: 0, cash: 0, gpay: 0, otherDigital: 0, byMode: {} }]);
     cur.setDate(cur.getDate() + 1);
   }
@@ -569,9 +569,9 @@ function updateRevDayLabel() {
   let range = document.getElementById('revDayRange');
   if (!label || !range) return;
   if (from === to) {
-    let today = new Date().toISOString().slice(0, 10);
+    let today = localDateStr();
     let y = new Date(); y.setDate(y.getDate() - 1);
-    let yStr = y.toISOString().slice(0, 10);
+    let yStr = localDateStr(y);
     if (from === today) label.textContent = 'Today';
     else if (from === yStr) label.textContent = 'Yesterday';
     else label.textContent = formatDate(from);
@@ -586,17 +586,17 @@ function updateRevDayLabel() {
 
 function revDayShift(delta) {
   let from = document.getElementById('revFrom').value;
-  if (!from) from = new Date().toISOString().slice(0, 10);
+  if (!from) from = localDateStr();
   let d = new Date(from + 'T00:00:00');
   d.setDate(d.getDate() + delta);
-  let s = d.toISOString().slice(0, 10);
+  let s = localDateStr(d);
   document.getElementById('revFrom').value = s;
   document.getElementById('revTo').value = s;
   showRevenue();
 }
 
 function revDayToday() {
-  let today = new Date().toISOString().slice(0, 10);
+  let today = localDateStr();
   document.getElementById('revFrom').value = today;
   document.getElementById('revTo').value = today;
   showRevenue();
@@ -611,20 +611,20 @@ function revGoToDate(date) {
 // ========== TIMELINE PRESETS ==========
 function setRevenuePreset(preset) {
   let today = new Date();
-  let from, to = today.toISOString().slice(0, 10);
+  let from, to = localDateStr(today);
   if (preset === 'today') { from = to; }
   else if (preset === 'yesterday') {
     let y = new Date(today); y.setDate(y.getDate() - 1);
-    from = to = y.toISOString().slice(0, 10);
+    from = to = localDateStr(y);
   }
-  else if (preset === 'last7') { let d = new Date(today); d.setDate(d.getDate() - 6); from = d.toISOString().slice(0, 10); }
-  else if (preset === 'last30') { let d = new Date(today); d.setDate(d.getDate() - 29); from = d.toISOString().slice(0, 10); }
-  else if (preset === 'thisMonth') { from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10); }
+  else if (preset === 'last7') { let d = new Date(today); d.setDate(d.getDate() - 6); from = localDateStr(d); }
+  else if (preset === 'last30') { let d = new Date(today); d.setDate(d.getDate() - 29); from = localDateStr(d); }
+  else if (preset === 'thisMonth') { from = localDateStr(new Date(today.getFullYear(), today.getMonth(), 1)); }
   else if (preset === 'lastMonth') {
     let d1 = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     let d2 = new Date(today.getFullYear(), today.getMonth(), 0);
-    from = d1.toISOString().slice(0, 10);
-    to = d2.toISOString().slice(0, 10);
+    from = localDateStr(d1);
+    to = localDateStr(d2);
   }
   else if (preset === 'thisYear') { from = today.getFullYear() + '-01-01'; }
   else if (preset === 'all') {

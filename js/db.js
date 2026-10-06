@@ -768,6 +768,12 @@ async function loadAllFromSupabase() {
     if (typeof renderDoctors === 'function') renderDoctors();
     if (typeof renderCollectors === 'function') renderCollectors();
     if (typeof refreshSidebar === 'function') refreshSidebar();
+    // Refresh Mera Kaam if it's the active tab so newly synced entries appear
+    if (typeof showMyWork === 'function' && typeof populateMyWorkOperators === 'function') {
+      populateMyWorkOperators();
+      let mwTab = document.getElementById('tab-mywork');
+      if (mwTab && mwTab.style.display !== 'none') showMyWork();
+    }
   } catch (e) {
     console.error('Supabase load error:', e);
     setDbStatus('Offline - Using Cache', 'db-offline');
@@ -810,4 +816,9 @@ function saveEntry_db(entry) {
 
 // ========== UTILITIES ==========
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function localDateStr(d) {
+  if (!d) d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayStr() { return localDateStr(); }
+function localToday() { return localDateStr(); }

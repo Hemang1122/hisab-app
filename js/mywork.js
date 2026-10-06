@@ -83,18 +83,18 @@ function initOperator() {
 
 function setMyWorkPreset(preset) {
   let today = new Date();
-  let from, to = today.toISOString().slice(0, 10);
+  let from, to = localDateStr(today);
   if (preset === 'today') { from = to; }
   else if (preset === 'yesterday') {
     let y = new Date(today); y.setDate(y.getDate() - 1);
-    from = to = y.toISOString().slice(0, 10);
+    from = to = localDateStr(y);
   }
   else if (preset === 'last7') {
     let d = new Date(today); d.setDate(d.getDate() - 6);
-    from = d.toISOString().slice(0, 10);
+    from = localDateStr(d);
   }
   else if (preset === 'thisMonth') {
-    from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    from = localDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
   }
   else if (preset === 'all') {
     if (entries.length) from = entries.map(e => e.date).sort()[0];
@@ -109,7 +109,7 @@ function showMyWork() {
   let from = document.getElementById('mwFrom').value;
   let to = document.getElementById('mwTo').value;
   let scope = document.getElementById('mwOperator').value;
-  if (!from || !to) { from = to = new Date().toISOString().slice(0, 10); }
+  if (!from || !to) { from = to = localDateStr(new Date()); }
 
   let filtered = entries.filter(e => e.date >= from && e.date <= to);
   let currentOp = getOperator();
@@ -204,7 +204,7 @@ function showMyWork() {
 
 // Initialize My Work date pickers on tab open — always reset to today
 function initMyWorkDates() {
-  let today = new Date().toISOString().slice(0, 10);
+  let today = localDateStr(new Date());
   document.getElementById('mwFrom').value = today;
   document.getElementById('mwTo').value = today;
   showMyWork();

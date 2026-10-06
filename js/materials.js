@@ -9,13 +9,13 @@ function switchMatSection(section) {
 }
 
 function initMaterialsTab() {
-  let today = new Date().toISOString().slice(0, 10);
+  let today = localDateStr();
   let fromEl = document.getElementById('matFrom');
   let toEl = document.getElementById('matTo');
   if (!fromEl.value) {
     // Default: this month
     let m = new Date(); m.setDate(1);
-    fromEl.value = m.toISOString().slice(0, 10);
+    fromEl.value = localDateStr(m);
     toEl.value = today;
   }
   renderMaterialsTab();
@@ -23,15 +23,15 @@ function initMaterialsTab() {
 
 function setMatPreset(preset) {
   let today = new Date();
-  let from, to = today.toISOString().slice(0, 10);
+  let from, to = localDateStr(today);
   if (preset === 'today') from = to;
-  else if (preset === 'last7') { let d = new Date(today); d.setDate(d.getDate() - 6); from = d.toISOString().slice(0, 10); }
-  else if (preset === 'thisMonth') from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  else if (preset === 'last7') { let d = new Date(today); d.setDate(d.getDate() - 6); from = localDateStr(d); }
+  else if (preset === 'thisMonth') from = localDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
   else if (preset === 'lastMonth') {
     let d1 = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     let d2 = new Date(today.getFullYear(), today.getMonth(), 0);
-    from = d1.toISOString().slice(0, 10);
-    to = d2.toISOString().slice(0, 10);
+    from = localDateStr(d1);
+    to = localDateStr(d2);
   } else if (preset === 'all') {
     if (entries.length) from = entries.map(e => e.date).sort()[0];
     else from = to;
