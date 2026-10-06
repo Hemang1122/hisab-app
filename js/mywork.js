@@ -180,11 +180,11 @@ function showMyWork() {
   c.innerHTML = html;
 }
 
-// Initialize My Work date pickers on tab open
+// Initialize My Work date pickers on tab open — always reset to today
 function initMyWorkDates() {
   let today = new Date().toISOString().slice(0, 10);
-  if (!document.getElementById('mwFrom').value) document.getElementById('mwFrom').value = today;
-  if (!document.getElementById('mwTo').value) document.getElementById('mwTo').value = today;
+  document.getElementById('mwFrom').value = today;
+  document.getElementById('mwTo').value = today;
   showMyWork();
 }
 
