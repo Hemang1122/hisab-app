@@ -475,6 +475,7 @@
 function init() {
   seedDefaultData();
   migrateData();
+  syncEntriesToRateList(); // Recalc shares on load (applies doctor split % changes)
   initDatePicker('e');
   initDatePicker('reg');
   let d = todayStr();
