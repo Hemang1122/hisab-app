@@ -588,8 +588,9 @@ function toast(msg, type) {
 }
 
 function calcShares(rate, docPercent, test) {
-  // If test has custom shares, use those instead of auto-calc
-  if (test && test.customDocShare != null && test.customLabShare != null) {
+  // Custom shares only apply for default 50% split doctors.
+  // For doctors with a non-default split (e.g. 60-40), always use percentage-based calc.
+  if (docPercent === 50 && test && test.customDocShare != null && test.customLabShare != null) {
     return { labShare: test.customLabShare, docShare: test.customDocShare };
   }
   let docShare = Math.round(rate * docPercent / 100);
