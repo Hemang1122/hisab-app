@@ -7,6 +7,10 @@ function togglePayFields() {
   let paidInput = document.getElementById('ePaid');
   if (status === 'paid' || status === 'hospital' || status === 'cashless' || status === 'nocut') { paidInput.style.display = 'none'; calcEntry(); }
   else { paidInput.style.display = 'block'; paidInput.focus(); calcEntry(); }
+  // Auto-set payment mode to "Hospital Collected" when cashless is selected
+  if (status === 'cashless') {
+    document.getElementById('ePayMode').value = 'Hospital Collected';
+  }
 }
 
 function getPaymentInfo() {
