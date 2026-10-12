@@ -521,6 +521,8 @@ function syncEntriesToRateList() {
     let entryChanged = false;
     let docPct = getDocPercent(e.doctorId);
     e.tests.forEach(t => {
+      // Aarush custom entries carry their own rate & split — never overwrite them
+      if (t.aarushOverride) return;
       let master = nameMap[keyOf(t.name)];
       if (master) {
         let newShares = calcShares(master.rate, docPct, master);
