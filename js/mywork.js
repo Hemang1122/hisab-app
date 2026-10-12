@@ -115,10 +115,10 @@ function showMyWork() {
   let currentOp = getOperator();
 
   if (scope === '__me__') {
-    filtered = filtered.filter(e => (e.filledBy || '').toLowerCase() === currentOp.toLowerCase());
+    filtered = filtered.filter(e => (e.filledBy || '').toLowerCase() === currentOp.toLowerCase() || (e.updatedBy || '').toLowerCase() === currentOp.toLowerCase());
   } else if (scope && scope.startsWith('op:')) {
     let opName = scope.substring(3).toLowerCase();
-    filtered = filtered.filter(e => (e.filledBy || '').toLowerCase() === opName);
+    filtered = filtered.filter(e => (e.filledBy || '').toLowerCase() === opName || (e.updatedBy || '').toLowerCase() === opName);
   }
 
   let c = document.getElementById('myWorkResult');
@@ -127,10 +127,10 @@ function showMyWork() {
     return;
   }
 
-  // Group by operator + date
+  // Group by operator + date — attribute to whoever last touched the entry
   let byOpDate = {}, byOp = {}, totalRev = 0, totalPaid = 0;
   filtered.forEach(e => {
-    let op = e.filledBy || 'Unknown';
+    let op = e.updatedBy || e.filledBy || 'Unknown';
     if (!byOp[op]) byOp[op] = { entries: 0, revenue: 0, paid: 0, balance: 0, tests: 0, dates: new Set() };
     byOp[op].entries++;
     byOp[op].revenue += e.total || 0;
@@ -190,12 +190,14 @@ function showMyWork() {
   // Individual entries
   html += '<div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 Entries (' + filtered.length + ')</h3>';
   html += '<div style="overflow-x:auto"><table style="font-size:11px"><tr><th>#</th><th>Date</th><th>Time</th><th>Operator</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th>Mode</th></tr>';
-  filtered.sort((a, b) => (b.created || '').localeCompare(a.created || '')).forEach((e, i) => {
+  filtered.sort((a, b) => (b.updated || b.created || '').localeCompare(a.updated || a.created || '')).forEach((e, i) => {
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;
     let dn = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
     let tnames = (e.tests || []).map(t => t.name).join(', ');
-    let timeStr = e.created ? new Date(e.created).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
-    html += '<tr><td>' + (i + 1) + '</td><td>' + e.date + '</td><td style="font-size:10px;color:#888">' + timeStr + '</td><td><b>' + (e.filledBy || '-') + '</b></td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px;max-width:200px">' + tnames + '</td><td style="text-align:right"><b>₹' + e.total + '</b></td><td style="text-align:right">₹' + e.paid + '</td><td style="font-size:10px">' + (e.paymentMode || '-') + '</td></tr>';
+    let lastOp = e.updatedBy || e.filledBy || '-';
+    let timeStr = (e.updated || e.created) ? new Date(e.updated || e.created).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+    let action = e.updatedBy ? '<span style="font-size:9px;color:#888">✏️</span> ' : '';
+    html += '<tr><td>' + (i + 1) + '</td><td>' + e.date + '</td><td style="font-size:10px;color:#888">' + timeStr + '</td><td>' + action + '<b>' + lastOp + '</b></td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px;max-width:200px">' + tnames + '</td><td style="text-align:right"><b>₹' + e.total + '</b></td><td style="text-align:right">₹' + e.paid + '</td><td style="font-size:10px">' + (e.paymentMode || '-') + '</td></tr>';
   });
   html += '</table></div></div>';
 
@@ -216,7 +218,7 @@ function populateMyWorkOperators() {
   if (!sel) return;
   let prev = sel.value;
   let ops = new Set();
-  entries.forEach(e => { if (e.filledBy) ops.add(e.filledBy); });
+  entries.forEach(e => { if (e.filledBy) ops.add(e.filledBy); if (e.updatedBy) ops.add(e.updatedBy); });
   let currentOp = getOperator();
   if (currentOp) ops.add(currentOp);
   let opsList = Array.from(ops).sort();
