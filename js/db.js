@@ -521,6 +521,8 @@ function syncEntriesToRateList() {
     let entryChanged = false;
     let docPct = getDocPercent(e.doctorId);
     e.tests.forEach(t => {
+      // Skip Aarush override tests — their custom splits must not be overwritten
+      if (t.aarushOverride) return;
       let master = nameMap[keyOf(t.name)];
       // Aarush custom entries carry their own split — never overwrite the shares.
       // One-time fix for entries saved before splitBase existed: the custom amount

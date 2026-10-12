@@ -64,7 +64,7 @@ function augmentTestRowsForAarush() {
     editDiv.innerHTML =
       '<input type="number" class="aarush-rate" data-idx="' + idx + '" value="' + (t.rate || 0) + '" ' +
         'style="width:55px;padding:2px 4px;border:1px solid #26a69a;border-radius:4px;font-size:11px;text-align:right;background:#e0f2f1" ' +
-        'title="Custom Rate" placeholder="Rate" oninput="aarushFieldChanged(' + idx + ')" onclick="event.stopPropagation()">' +
+        'title="Split Base — splits calculated on this amount (original rate stays in hisab)" placeholder="Split₹" oninput="aarushFieldChanged(' + idx + ')" onclick="event.stopPropagation()">' +
       '<span style="color:#888;font-size:9px">L:</span>' +
       '<input type="number" class="aarush-lab" data-idx="' + idx + '" value="' + shares.labShare + '" ' +
         'style="width:45px;padding:2px 3px;border:1px solid #66bb6a;border-radius:4px;font-size:11px;text-align:right;background:#e8f5e9" ' +
@@ -153,10 +153,13 @@ function aarushApplyCustomTotal() {
     }
   });
   calcEntry();
-  if (typeof toast === 'function') toast('✅ Rates adjusted to ₹' + customTotal + ' total');
+  if (typeof toast === 'function') toast('✅ Split calculated on ₹' + customTotal + ' — original rates unchanged');
 }
 
 // ── Get selected tests with Aarush overrides ──
+// IMPORTANT: rate = ORIGINAL from master rate list (patient pays this)
+// labShare/docShare = calculated from the custom split amount (aarush-rate input)
+// aarushCustomRate = the custom split base (what the split was calculated on)
 function getSelectedTestsAarush() {
   let rl = getMasterRL();
   if (!rl) return [];
@@ -177,10 +180,14 @@ function getSelectedTestsAarush() {
     let docShare = docInput ? (parseFloat(docInput.value) || 0) : 0;
 
     selected.push({
-      name: t.name, rate: t.rate, splitBase: splitBase, type: t.type,
-      labShare: labShare, docShare: docShare,
+      name: t.name,
+      rate: t.rate,               // ALWAYS original rate from master
+      splitBase: splitBase,       // custom split base (what split was calculated on)
+      type: t.type,
+      labShare: labShare,
+      docShare: docShare,
       reagentCost: t.reagentCost || 0,
-      aarushOverride: true  // flag so we know this was an Aarush custom entry
+      aarushOverride: true
     });
   });
   return selected;
@@ -210,7 +217,9 @@ function restoreAarushOverrides(entryTests) {
     let labInput = document.querySelector('.aarush-lab[data-idx="' + idx + '"]');
     let docInput = document.querySelector('.aarush-doc[data-idx="' + idx + '"]');
 
-    let base = saved.splitBase != null ? saved.splitBase : saved.rate;
+    // Restore the custom split base, NOT the original rate
+    // Check both splitBase and aarushCustomRate for backward compatibility
+    let base = saved.splitBase != null ? saved.splitBase : (saved.aarushCustomRate != null ? saved.aarushCustomRate : saved.rate);
     if (rateInput && base != null) rateInput.value = base;
     if (labInput && saved.labShare != null) labInput.value = saved.labShare;
     if (docInput && saved.docShare != null) docInput.value = saved.docShare;
