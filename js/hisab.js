@@ -312,7 +312,9 @@ function buildCalcBreakdown(filtered, doc, isSelf, from, to) {
       let lShare = t.labShare || 0;
       // Determine split type
       let splitLabel;
-      if (dShare + lShare === rate) {
+      if (t.splitBase != null && t.splitBase !== rate) {
+        splitLabel = '<span style="color:var(--accent);font-weight:700">Custom on ₹' + t.splitBase + '</span>';
+      } else if (dShare + lShare === rate) {
         if (rate > 0 && dShare * 2 === rate) splitLabel = '<span style="color:#888">50-50 auto</span>';
         else if (rate > 0) {
           let pct = Math.round(dShare / rate * 100);

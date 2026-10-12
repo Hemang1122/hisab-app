@@ -521,9 +521,18 @@ function syncEntriesToRateList() {
     let entryChanged = false;
     let docPct = getDocPercent(e.doctorId);
     e.tests.forEach(t => {
-      // Aarush custom entries carry their own rate & split — never overwrite them
-      if (t.aarushOverride) return;
       let master = nameMap[keyOf(t.name)];
+      // Aarush custom entries carry their own split — never overwrite the shares.
+      // One-time fix for entries saved before splitBase existed: the custom amount
+      // was stored as the rate; move it to splitBase and restore the original rate.
+      if (t.aarushOverride) {
+        if (t.splitBase == null && master && t.rate !== master.rate) {
+          t.splitBase = t.rate;
+          t.rate = master.rate;
+          entryChanged = true;
+        }
+        return;
+      }
       if (master) {
         let newShares = calcShares(master.rate, docPct, master);
         let masterReagent = master.reagentCost || 0;

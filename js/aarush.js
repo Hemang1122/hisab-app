@@ -170,12 +170,14 @@ function getSelectedTestsAarush() {
     let labInput = document.querySelector('.aarush-lab[data-idx="' + idx + '"]');
     let docInput = document.querySelector('.aarush-doc[data-idx="' + idx + '"]');
 
-    let rate = rateInput ? (parseFloat(rateInput.value) || 0) : t.rate;
+    // The custom rate is ONLY the basis for the Dr/Lab split.
+    // The amount charged (rate) always stays the original master rate.
+    let splitBase = rateInput ? (parseFloat(rateInput.value) || 0) : t.rate;
     let labShare = labInput ? (parseFloat(labInput.value) || 0) : 0;
     let docShare = docInput ? (parseFloat(docInput.value) || 0) : 0;
 
     selected.push({
-      name: t.name, rate: rate, type: t.type,
+      name: t.name, rate: t.rate, splitBase: splitBase, type: t.type,
       labShare: labShare, docShare: docShare,
       reagentCost: t.reagentCost || 0,
       aarushOverride: true  // flag so we know this was an Aarush custom entry
@@ -208,7 +210,8 @@ function restoreAarushOverrides(entryTests) {
     let labInput = document.querySelector('.aarush-lab[data-idx="' + idx + '"]');
     let docInput = document.querySelector('.aarush-doc[data-idx="' + idx + '"]');
 
-    if (rateInput && saved.rate != null) rateInput.value = saved.rate;
+    let base = saved.splitBase != null ? saved.splitBase : saved.rate;
+    if (rateInput && base != null) rateInput.value = base;
     if (labInput && saved.labShare != null) labInput.value = saved.labShare;
     if (docInput && saved.docShare != null) docInput.value = saved.docShare;
   });
