@@ -111,7 +111,13 @@ function showMyWork() {
   let scope = document.getElementById('mwOperator').value;
   if (!from || !to) { from = to = localDateStr(new Date()); }
 
-  let filtered = entries.filter(e => e.date >= from && e.date <= to);
+  // Filter by WORK date (when entry was created/updated), not patient visit date
+  let filtered = entries.filter(e => {
+    let workTs = e.updated || e.created || '';
+    if (!workTs) return e.date >= from && e.date <= to; // fallback to visit date if no timestamp
+    let workDate = workTs.substring(0, 10); // extract YYYY-MM-DD from ISO timestamp
+    return workDate >= from && workDate <= to;
+  });
   let currentOp = getOperator();
 
   if (scope === '__me__') {
@@ -137,12 +143,13 @@ function showMyWork() {
     byOp[op].paid += e.paid || 0;
     byOp[op].balance += e.balance || 0;
     byOp[op].tests += (e.tests || []).length;
-    byOp[op].dates.add(e.date);
+    let workDate = (e.updated || e.created || '').substring(0, 10) || e.date;
+    byOp[op].dates.add(workDate);
     totalRev += e.total || 0;
     totalPaid += e.paid || 0;
 
-    let key = op + '||' + e.date;
-    if (!byOpDate[key]) byOpDate[key] = { op, date: e.date, entries: 0, revenue: 0, paid: 0, tests: 0 };
+    let key = op + '||' + workDate;
+    if (!byOpDate[key]) byOpDate[key] = { op, date: workDate, entries: 0, revenue: 0, paid: 0, tests: 0 };
     byOpDate[key].entries++;
     byOpDate[key].revenue += e.total || 0;
     byOpDate[key].paid += e.paid || 0;
@@ -189,15 +196,18 @@ function showMyWork() {
 
   // Individual entries
   html += '<div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 Entries (' + filtered.length + ')</h3>';
-  html += '<div style="overflow-x:auto"><table style="font-size:11px"><tr><th>#</th><th>Date</th><th>Time</th><th>Operator</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th>Mode</th></tr>';
+  html += '<div style="overflow-x:auto"><table style="font-size:11px"><tr><th>#</th><th>Work Date</th><th>Time</th><th>Operator</th><th>Patient</th><th>Visit Date</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th>Mode</th></tr>';
   filtered.sort((a, b) => (b.updated || b.created || '').localeCompare(a.updated || a.created || '')).forEach((e, i) => {
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(d => d.id === e.doctorId) : null;
     let dn = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
     let tnames = (e.tests || []).map(t => t.name).join(', ');
     let lastOp = e.updatedBy || e.filledBy || '-';
-    let timeStr = (e.updated || e.created) ? new Date(e.updated || e.created).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+    let workTs = e.updated || e.created || '';
+    let workDate = workTs ? workTs.substring(0, 10) : e.date;
+    let timeStr = workTs ? new Date(workTs).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
     let action = e.updatedBy ? '<span style="font-size:9px;color:#888">✏️</span> ' : '';
-    html += '<tr><td>' + (i + 1) + '</td><td>' + e.date + '</td><td style="font-size:10px;color:#888">' + timeStr + '</td><td>' + action + '<b>' + lastOp + '</b></td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px;max-width:200px">' + tnames + '</td><td style="text-align:right"><b>₹' + e.total + '</b></td><td style="text-align:right">₹' + e.paid + '</td><td style="font-size:10px">' + (e.paymentMode || '-') + '</td></tr>';
+    let visitDiff = (e.date !== workDate) ? '<span style="color:#e65100;font-size:10px">' + e.date + '</span>' : '<span style="font-size:10px;color:#888">' + e.date + '</span>';
+    html += '<tr><td>' + (i + 1) + '</td><td>' + workDate + '</td><td style="font-size:10px;color:#888">' + timeStr + '</td><td>' + action + '<b>' + lastOp + '</b></td><td><b>' + e.name + '</b></td><td>' + visitDiff + '</td><td style="font-size:10px">' + dn + '</td><td style="font-size:10px;max-width:200px">' + tnames + '</td><td style="text-align:right"><b>₹' + e.total + '</b></td><td style="text-align:right">₹' + e.paid + '</td><td style="font-size:10px">' + (e.paymentMode || '-') + '</td></tr>';
   });
   html += '</table></div></div>';
 
