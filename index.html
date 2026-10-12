@@ -98,6 +98,7 @@
 <div class="entry-form">
 <div class="card">
 <div id="editBanner" style="display:none;background:#fff4e6;border:1px solid var(--accent);color:var(--accent);padding:6px 10px;border-radius:6px;margin-bottom:8px;font-size:12px;font-weight:600">✏️ Edit mode — changes will update the existing entry</div>
+<div id="aarushBanner" style="display:none;background:#e0f2f1;border:1px solid #26a69a;color:#00695c;padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:13px;font-weight:600">🏥 Aarush Hospital Mode — Custom rates &amp; splits enabled for this entry</div>
 <div class="row">
 <div>
 <label>Date</label>
@@ -120,6 +121,14 @@
 <label>Tests (Rate List: <span id="rlName">-</span>)</label>
 <div id="selectedTestsSummary" style="display:none"></div>
 <div id="testCheckboxes" style="max-height:200px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius);padding:6px"></div>
+<div id="aarushCustomTotalWrap" style="display:none;margin-top:6px;padding:8px 10px;background:#e0f2f1;border:1px solid #26a69a;border-radius:8px">
+<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+<label style="font-size:12px;font-weight:600;color:#00695c;margin:0;white-space:nowrap">Custom Total ₹:</label>
+<input id="aarushCustomTotal" type="number" placeholder="Enter total amount" style="width:120px;padding:5px 8px;border:1px solid #26a69a;border-radius:6px;font-size:13px;font-weight:600;background:white">
+<button onclick="aarushApplyCustomTotal()" class="btn btn-primary" style="padding:4px 12px;font-size:12px;background:#26a69a;border-color:#26a69a">Apply</button>
+<span style="font-size:10px;color:#666">Proportionally scales all checked test rates</span>
+</div>
+</div>
 <div class="total-bar" id="entryTotals" style="display:none">
 <span>Subtotal: &#8377;<b id="eSubtotal">0</b></span>
 <span>Discount: &#8377;<b id="eDiscAmt">0</b></span>
@@ -498,6 +507,7 @@
 <script src="js/ratelist.js?v=50"></script>
 <script src="js/doctors.js?v=50"></script>
 <script src="js/entry.js?v=50"></script>
+<script src="js/aarush.js?v=50"></script>
 <script src="js/register.js?v=50"></script>
 <script src="js/hisab.js?v=50"></script>
 <script src="js/revenue.js?v=50"></script>

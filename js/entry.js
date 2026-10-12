@@ -36,6 +36,7 @@ function initDoctorChange() {
         container.innerHTML = '<div class="empty" style="padding:10px">Rate list nahi mili</div>';
         rlSpan.textContent = '-';
       }
+      if (typeof updateAarushUI === 'function') updateAarushUI();
       return;
     }
 
@@ -47,6 +48,9 @@ function initDoctorChange() {
     if (!rl) { container.innerHTML = '<div class="empty" style="padding:10px">Rate list nahi mili</div>'; rlSpan.textContent = '-'; return; }
     let docPct = doc.docPercent != null ? doc.docPercent : 50;
     loadTestCheckboxes(rl, docPct);
+    // Aarush mode: show/hide UI and augment test rows
+    if (typeof updateAarushUI === 'function') updateAarushUI();
+    if (typeof augmentTestRowsForAarush === 'function') augmentTestRowsForAarush();
   });
 }
 
@@ -77,6 +81,9 @@ function loadTestCheckboxes(rl, docPercent) {
   container.innerHTML = searchHtml + testsHtml;
   // Store current docPercent for use in getSelectedTests
   container.dataset.docPercent = docPercent;
+  // Augment rows with Aarush editable fields if in Aarush mode
+  if (typeof updateAarushUI === 'function') updateAarushUI();
+  if (typeof augmentTestRowsForAarush === 'function') augmentTestRowsForAarush();
   calcEntry();
 }
 
@@ -271,6 +278,10 @@ function removeSelectedTest(idx) {
 }
 
 function getSelectedTests() {
+  // In Aarush mode, use Aarush-specific function for custom rates/splits
+  if (typeof isAarushMode === 'function' && isAarushMode() && typeof getSelectedTestsAarush === 'function') {
+    return getSelectedTestsAarush();
+  }
   let rl = getMasterRL();
   if (!rl) return [];
   let container = document.getElementById('testCheckboxes');
@@ -493,6 +504,11 @@ function editEntry(id) {
 
     // Collector
     document.getElementById('eCollector').value = e.collectorId || '';
+
+    // Restore Aarush custom rate/split overrides if editing an Aarush entry
+    if (typeof restoreAarushOverrides === 'function' && e.tests) {
+      restoreAarushOverrides(e.tests);
+    }
 
     calcEntry();
     updateSaveButtonLabel();
