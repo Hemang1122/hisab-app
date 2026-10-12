@@ -36,6 +36,11 @@ async function showRevenue() {
   d.totalDisc = 0; d.totalPaid = 0; d.totalBal = 0; d.totalExtras = 0; d.totalTests = 0;
   d.totalReagent = 0;
   d.extraEntries = []; d.byDoctor = {}; d.byPayMode = {}; d.byCollector = {}; d.byDate = {}; d.byOperator = {}; d.byTest = {};
+  // Cashless + No Cut tracking
+  d.cashlessEntries = []; d.cashlessTotal = 0; d.cashlessCount = 0;
+  d.cashlessByDoctor = {}; d.cashlessByDate = {};
+  d.noCutEntries = []; d.noCutTotal = 0; d.noCutCount = 0;
+  d.noCutByDoctor = {};
 
   filtered.forEach(e => {
     // Raw shares from stored data
@@ -128,6 +133,54 @@ async function showRevenue() {
       else d.byDate[e.date].otherDigital += e.paid;
     }
 
+    // Cashless tracking
+    if (e.cashless) {
+      d.cashlessCount++;
+      d.cashlessTotal += e.total || 0;
+      let liveDocCL = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(x => x.id === e.doctorId) : null;
+      let clDocName = liveDocCL ? liveDocCL.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : 'Unknown'));
+      if (!d.cashlessByDoctor[clDocName]) d.cashlessByDoctor[clDocName] = { count: 0, total: 0, labShare: 0, docShare: 0, tests: 0, patients: [] };
+      d.cashlessByDoctor[clDocName].count++;
+      d.cashlessByDoctor[clDocName].total += e.total || 0;
+      d.cashlessByDoctor[clDocName].labShare += labS;
+      d.cashlessByDoctor[clDocName].docShare += docS;
+      d.cashlessByDoctor[clDocName].tests += e.tests.length;
+      d.cashlessByDoctor[clDocName].patients.push({
+        date: e.date, name: e.name, tests: e.tests.map(t => t.name).join(', '),
+        total: e.total, paid: e.paid, balance: e.balance,
+        testDetails: e.tests.map(t => ({ name: t.name, rate: t.rate || 0, labShare: t.labShare || 0, docShare: t.docShare || 0 }))
+      });
+      if (!d.cashlessByDate[e.date]) d.cashlessByDate[e.date] = { count: 0, total: 0 };
+      d.cashlessByDate[e.date].count++;
+      d.cashlessByDate[e.date].total += e.total || 0;
+      d.cashlessEntries.push({
+        date: e.date, name: e.name, doctorName: clDocName,
+        tests: e.tests.map(t => t.name).join(', '), total: e.total,
+        labShare: labS, docShare: docS, testCount: e.tests.length,
+        testDetails: e.tests.map(t => ({ name: t.name, rate: t.rate || 0, labShare: t.labShare || 0, docShare: t.docShare || 0 }))
+      });
+    }
+    // No Cut tracking
+    if (e.noCut) {
+      d.noCutCount++;
+      d.noCutTotal += (e.subtotal || e.total || 0);
+      let liveDocNC = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(x => x.id === e.doctorId) : null;
+      let ncDocName = liveDocNC ? liveDocNC.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : 'Unknown'));
+      if (!d.noCutByDoctor[ncDocName]) d.noCutByDoctor[ncDocName] = { count: 0, total: 0, tests: 0, patients: [] };
+      d.noCutByDoctor[ncDocName].count++;
+      d.noCutByDoctor[ncDocName].total += (e.subtotal || e.total || 0);
+      d.noCutByDoctor[ncDocName].tests += e.tests.length;
+      d.noCutByDoctor[ncDocName].patients.push({
+        date: e.date, name: e.name, tests: e.tests.map(t => t.name).join(', '),
+        total: e.subtotal || e.total || 0, testCount: e.tests.length
+      });
+      d.noCutEntries.push({
+        date: e.date, name: e.name, doctorName: ncDocName,
+        tests: e.tests.map(t => t.name).join(', '), total: e.subtotal || e.total || 0,
+        testCount: e.tests.length
+      });
+    }
+
     let op = e.filledBy || 'Unknown';
     if (!d.byOperator[op]) d.byOperator[op] = { count: 0, revenue: 0, paid: 0, tests: 0, dates: new Set(), byDate: {} };
     d.byOperator[op].count++;
@@ -161,6 +214,7 @@ function renderRevenueSection() {
     case 'payment': html = renderByPayment(d); break;
     case 'extras': html = renderExtras(d); break;
     case 'materials': html = renderMaterials(d); break;
+    case 'cashless': html = renderCashless(d); break;
     case 'entries': html = renderAllEntries(d); break;
   }
   document.getElementById('revenueResult').innerHTML = html;
@@ -199,6 +253,18 @@ function renderOverview(d) {
   html += statCard('green', 'Doctors/Hospitals', Object.keys(d.byDoctor).length, true);
   html += statCard('yellow', 'Avg Ticket', d.filtered.length ? Math.round(d.totalRevenue / d.filtered.length) : 0);
   html += '</div>';
+
+  // Cashless + No Cut quick stats
+  if (d.cashlessCount > 0 || d.noCutCount > 0) {
+    html += '<div class="stat-grid">';
+    if (d.cashlessCount > 0) {
+      html += statCard('purple', '💳 Cashless', d.cashlessCount + ' · ₹' + d.cashlessTotal.toLocaleString('en-IN'), true);
+    }
+    if (d.noCutCount > 0) {
+      html += statCard('red', '🆓 No Cut', d.noCutCount + ' · ₹' + d.noCutTotal.toLocaleString('en-IN'), true);
+    }
+    html += '</div>';
+  }
 
   // Payment mode quick strip
   let payList = Object.entries(d.byPayMode).sort((a, b) => b[1] - a[1]);
@@ -549,6 +615,144 @@ function renderAllEntries(d) {
   return html;
 }
 
+// ========== CASHLESS & NO CUT ==========
+function renderCashless(d) {
+  let html = '';
+
+  // ── Summary stat cards ──
+  html += '<div class="stat-grid">';
+  html += statCard('purple', '💳 Cashless Patients', d.cashlessCount, true);
+  html += statCard('green', '💳 Cashless Amount', d.cashlessTotal);
+  html += statCard('red', '🆓 No Cut Patients', d.noCutCount, true);
+  html += statCard('yellow', '🆓 No Cut Value', d.noCutTotal);
+  html += '</div>';
+
+  // Avg cashless ticket
+  let avgCashless = d.cashlessCount > 0 ? Math.round(d.cashlessTotal / d.cashlessCount) : 0;
+  let cashlessPct = d.filtered.length > 0 ? Math.round(d.cashlessCount / d.filtered.length * 100) : 0;
+  let noCutPct = d.filtered.length > 0 ? Math.round(d.noCutCount / d.filtered.length * 100) : 0;
+  html += '<div class="stat-grid">';
+  html += statCard('blue', 'Avg Cashless Ticket', avgCashless);
+  html += statCard('purple', '% Cashless', cashlessPct + '%', true);
+  html += statCard('red', '% No Cut', noCutPct + '%', true);
+  html += statCard('green', 'Regular Patients', d.filtered.length - d.cashlessCount - d.noCutCount, true);
+  html += '</div>';
+
+  // ══════════ CASHLESS SECTION ══════════
+  if (d.cashlessCount > 0) {
+    // ── Daily cashless timeline ──
+    let dateList = Object.entries(d.cashlessByDate).sort((a, b) => a[0].localeCompare(b[0]));
+    if (dateList.length > 1) {
+      html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📅 Cashless by Date</h3>';
+      html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Date</th><th style="text-align:right">Patients</th><th style="text-align:right">Amount</th><th style="text-align:right">Avg Ticket</th></tr></thead><tbody>';
+      dateList.forEach(([date, x]) => {
+        html += '<tr><td><b>' + formatDate(date) + '</b></td><td style="text-align:right">' + x.count + '</td><td style="text-align:right"><b>₹' + x.total.toLocaleString('en-IN') + '</b></td><td style="text-align:right">₹' + (x.count > 0 ? Math.round(x.total / x.count) : 0) + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
+    // ── Doctor breakdown with drill-down ──
+    let docList = Object.entries(d.cashlessByDoctor).sort((a, b) => b[1].total - a[1].total);
+    html += '<div class="card" style="border-left:4px solid #00695c"><h3 style="font-size:15px;margin-bottom:10px;color:#00695c">💳 Cashless — Doctor / Hospital Breakdown</h3>';
+
+    // Doctor summary table
+    html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Doctor / Hospital</th><th style="text-align:right">Patients</th><th style="text-align:right">Tests</th><th style="text-align:right">Total Amount</th><th style="text-align:right">Lab Share</th><th style="text-align:right">Doc Share</th><th style="text-align:right">Avg Ticket</th></tr></thead><tbody>';
+    docList.forEach(([name, x]) => {
+      let avg = x.count > 0 ? Math.round(x.total / x.count) : 0;
+      html += '<tr><td><b>' + name + '</b></td><td style="text-align:right">' + x.count + '</td><td style="text-align:right">' + x.tests + '</td><td style="text-align:right"><b>₹' + x.total.toLocaleString('en-IN') + '</b></td><td style="text-align:right">₹' + x.labShare + '</td><td style="text-align:right">₹' + x.docShare + '</td><td style="text-align:right">₹' + avg + '</td></tr>';
+    });
+    // Grand total row
+    let totalCLTests = docList.reduce((s, [, x]) => s + x.tests, 0);
+    let totalCLLab = docList.reduce((s, [, x]) => s + x.labShare, 0);
+    let totalCLDoc = docList.reduce((s, [, x]) => s + x.docShare, 0);
+    html += '<tr style="background:var(--n100);font-weight:700"><td>TOTAL</td><td style="text-align:right">' + d.cashlessCount + '</td><td style="text-align:right">' + totalCLTests + '</td><td style="text-align:right">₹' + d.cashlessTotal.toLocaleString('en-IN') + '</td><td style="text-align:right">₹' + totalCLLab + '</td><td style="text-align:right">₹' + totalCLDoc + '</td><td style="text-align:right">₹' + avgCashless + '</td></tr>';
+    html += '</tbody></table></div></div>';
+
+    // ── Per-doctor deep drill-down: each doctor's patients + test details ──
+    docList.forEach(([name, x]) => {
+      html += '<div class="card" style="border-left:3px solid #26a69a;margin-left:8px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+      html += '<h4 style="font-size:14px;margin:0;color:#00695c">💳 ' + name + '</h4>';
+      html += '<div style="font-size:11px;color:#666">' + x.count + ' patients · ' + x.tests + ' tests · ₹' + x.total.toLocaleString('en-IN') + '</div>';
+      html += '</div>';
+
+      // Patient list with test breakdown
+      html += '<div style="overflow-x:auto"><table style="font-size:11px"><thead><tr style="background:#e0f2f1"><th>Date</th><th>Patient</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Lab ₹</th><th style="text-align:right">Doc ₹</th></tr></thead><tbody>';
+      x.patients.sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
+        html += '<tr><td>' + p.date + '</td><td><b>' + p.name + '</b></td><td style="font-size:10px;max-width:220px">' + p.tests + '</td><td style="text-align:right"><b>₹' + p.total + '</b></td><td style="text-align:right">₹' + p.testDetails.reduce((s, t) => s + t.labShare, 0) + '</td><td style="text-align:right">₹' + p.testDetails.reduce((s, t) => s + t.docShare, 0) + '</td></tr>';
+
+        // Test-level breakdown for each patient
+        if (p.testDetails.length > 1) {
+          p.testDetails.forEach(t => {
+            html += '<tr style="background:#f5faf9"><td></td><td colspan="2" style="font-size:10px;color:#555;padding-left:16px">↳ ' + t.name + '</td><td style="text-align:right;font-size:10px;color:#777">₹' + t.rate + '</td><td style="text-align:right;font-size:10px;color:#777">₹' + t.labShare + '</td><td style="text-align:right;font-size:10px;color:#777">₹' + t.docShare + '</td></tr>';
+          });
+        }
+      });
+      html += '</tbody></table></div></div>';
+    });
+
+    // ── Test-level aggregation across all cashless ──
+    let clByTest = {};
+    d.cashlessEntries.forEach(ce => {
+      ce.testDetails.forEach(t => {
+        if (!clByTest[t.name]) clByTest[t.name] = { count: 0, revenue: 0, labShare: 0, docShare: 0 };
+        clByTest[t.name].count++;
+        clByTest[t.name].revenue += t.rate;
+        clByTest[t.name].labShare += t.labShare;
+        clByTest[t.name].docShare += t.docShare;
+      });
+    });
+    let testList = Object.entries(clByTest).sort((a, b) => b[1].revenue - a[1].revenue);
+    if (testList.length) {
+      html += '<div class="card" style="border-left:3px solid #00897b"><h3 style="font-size:14px;margin-bottom:10px;color:#00695c">🧪 Cashless — Test-wise Breakdown</h3>';
+      html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Test</th><th style="text-align:right">Count</th><th style="text-align:right">Revenue</th><th style="text-align:right">Lab Share</th><th style="text-align:right">Doc Share</th></tr></thead><tbody>';
+      testList.forEach(([name, x]) => {
+        html += '<tr><td><b>' + name + '</b></td><td style="text-align:right">' + x.count + '</td><td style="text-align:right"><b>₹' + x.revenue + '</b></td><td style="text-align:right">₹' + x.labShare + '</td><td style="text-align:right">₹' + x.docShare + '</td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+  } else {
+    html += '<div class="card"><div class="empty" style="padding:20px">💳 Koi cashless entry nahi mili is date range mein.</div></div>';
+  }
+
+  // ══════════ NO CUT SECTION ══════════
+  if (d.noCutCount > 0) {
+    let ncDocList = Object.entries(d.noCutByDoctor).sort((a, b) => b[1].total - a[1].total);
+    html += '<div class="card" style="border-left:4px solid #6a1b9a;margin-top:16px"><h3 style="font-size:15px;margin-bottom:10px;color:#6a1b9a">🆓 No Cut (Free) — Doctor Breakdown</h3>';
+    html += '<p style="font-size:11px;color:#888;margin:0 0 10px">No Cut entries are ₹0 in hisab — lab and doctor dono ka share nahi kata. Ye sirf tracking ke liye hai.</p>';
+
+    html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Doctor / Hospital</th><th style="text-align:right">Patients</th><th style="text-align:right">Tests</th><th style="text-align:right">Original Value</th><th style="text-align:right">Avg Value</th></tr></thead><tbody>';
+    ncDocList.forEach(([name, x]) => {
+      let avg = x.count > 0 ? Math.round(x.total / x.count) : 0;
+      html += '<tr><td><b>' + name + '</b></td><td style="text-align:right">' + x.count + '</td><td style="text-align:right">' + x.tests + '</td><td style="text-align:right"><b>₹' + x.total.toLocaleString('en-IN') + '</b></td><td style="text-align:right">₹' + avg + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+
+    // Per-doctor drill-down for No Cut
+    ncDocList.forEach(([name, x]) => {
+      html += '<div class="card" style="border-left:3px solid #ab47bc;margin-left:8px">';
+      html += '<h4 style="font-size:13px;margin:0 0 8px;color:#6a1b9a">🆓 ' + name + ' <span style="font-weight:400;color:#888">(' + x.count + ' patients · ₹' + x.total.toLocaleString('en-IN') + ' waived)</span></h4>';
+      html += '<div style="overflow-x:auto"><table style="font-size:11px"><thead><tr style="background:#f3e5f5"><th>Date</th><th>Patient</th><th>Tests</th><th style="text-align:right">Original Value</th></tr></thead><tbody>';
+      x.patients.sort((a, b) => a.date.localeCompare(b.date)).forEach(p => {
+        html += '<tr><td>' + p.date + '</td><td><b>' + p.name + '</b></td><td style="font-size:10px;max-width:220px">' + p.tests + '</td><td style="text-align:right"><b>₹' + p.total + '</b></td></tr>';
+      });
+      html += '</tbody></table></div></div>';
+    });
+  }
+
+  // ── Full cashless entries list ──
+  if (d.cashlessEntries.length) {
+    html += '<div class="card" style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:10px">📋 All Cashless Entries (' + d.cashlessEntries.length + ')</h3>';
+    html += '<div style="overflow-x:auto"><table style="font-size:11px"><thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Lab ₹</th><th style="text-align:right">Doc ₹</th></tr></thead><tbody>';
+    d.cashlessEntries.sort((a, b) => a.date.localeCompare(b.date)).forEach((e, i) => {
+      html += '<tr><td>' + (i + 1) + '</td><td>' + e.date + '</td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + e.doctorName + '</td><td style="font-size:10px;max-width:200px">' + e.tests + '</td><td style="text-align:right"><b>₹' + e.total + '</b></td><td style="text-align:right">₹' + e.labShare + '</td><td style="text-align:right">₹' + e.docShare + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  return html;
+}
+
 // ========== HELPERS ==========
 function statCard(color, label, value, isCount) {
   let prefix = isCount ? '' : '&#8377;';
@@ -669,6 +873,8 @@ function printRevenueReport() {
   html += metricBox('Total Tests', d.totalTests);
   html += metricBox('Doctors/Hospitals', Object.keys(d.byDoctor).length);
   html += metricBox('Avg Ticket', '₹' + (d.filtered.length ? Math.round(d.totalRevenue / d.filtered.length) : 0));
+  if (d.cashlessCount > 0) html += metricBox('💳 Cashless', d.cashlessCount + ' · ₹' + d.cashlessTotal.toLocaleString('en-IN'));
+  if (d.noCutCount > 0) html += metricBox('🆓 No Cut', d.noCutCount + ' · ₹' + d.noCutTotal.toLocaleString('en-IN'));
   html += '</div></div>';
 
   let docList = Object.entries(d.byDoctor).sort((a, b) => b[1].revenue - a[1].revenue);
@@ -712,6 +918,46 @@ function printRevenueReport() {
     payList.forEach(([m, a]) => {
       let pct = d.totalPaid > 0 ? Math.round(a / d.totalPaid * 100) : 0;
       html += '<tr><td><b>' + m + '</b></td><td class="rr-right">₹' + a + '</td><td class="rr-right">' + pct + '%</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Cashless section in print
+  if (d.cashlessCount > 0) {
+    html += '<div class="rr-section"><h2>💳 Cashless Patients (' + d.cashlessCount + ')</h2>';
+    html += '<div class="rr-metrics">';
+    html += metricBox('Cashless Patients', d.cashlessCount);
+    html += metricBox('Cashless Amount', '₹' + d.cashlessTotal.toLocaleString('en-IN'));
+    html += metricBox('Avg Ticket', '₹' + (d.cashlessCount > 0 ? Math.round(d.cashlessTotal / d.cashlessCount) : 0));
+    html += metricBox('% of Total', (d.filtered.length > 0 ? Math.round(d.cashlessCount / d.filtered.length * 100) : 0) + '%');
+    html += '</div>';
+    // Doctor breakdown
+    let clDocList = Object.entries(d.cashlessByDoctor).sort((a, b) => b[1].total - a[1].total);
+    html += '<table class="rr-table"><thead><tr><th>Doctor / Hospital</th><th class="rr-right">Patients</th><th class="rr-right">Tests</th><th class="rr-right">Total</th><th class="rr-right">Lab ₹</th><th class="rr-right">Doc ₹</th></tr></thead><tbody>';
+    clDocList.forEach(([n, x]) => {
+      html += '<tr><td><b>' + n + '</b></td><td class="rr-right">' + x.count + '</td><td class="rr-right">' + x.tests + '</td><td class="rr-right">₹' + x.total + '</td><td class="rr-right">₹' + x.labShare + '</td><td class="rr-right">₹' + x.docShare + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    // Individual entries
+    html += '<h3 style="margin:12px 0 6px;font-size:12px">All Cashless Entries</h3>';
+    html += '<table class="rr-table"><thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th class="rr-right">Total</th><th class="rr-right">Lab ₹</th><th class="rr-right">Doc ₹</th></tr></thead><tbody>';
+    d.cashlessEntries.sort((a, b) => a.date.localeCompare(b.date)).forEach((e, i) => {
+      html += '<tr><td class="rr-center">' + (i + 1) + '</td><td>' + formatDate(e.date) + '</td><td><b>' + e.name + '</b></td><td style="font-size:10px">' + e.doctorName + '</td><td style="font-size:10px">' + e.tests + '</td><td class="rr-right"><b>₹' + e.total + '</b></td><td class="rr-right">₹' + e.labShare + '</td><td class="rr-right">₹' + e.docShare + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // No Cut section in print
+  if (d.noCutCount > 0) {
+    html += '<div class="rr-section"><h2>🆓 No Cut (Free) Patients (' + d.noCutCount + ')</h2>';
+    html += '<div class="rr-metrics">';
+    html += metricBox('No Cut Patients', d.noCutCount);
+    html += metricBox('Original Value', '₹' + d.noCutTotal.toLocaleString('en-IN'));
+    html += '</div>';
+    let ncDocList = Object.entries(d.noCutByDoctor).sort((a, b) => b[1].total - a[1].total);
+    html += '<table class="rr-table"><thead><tr><th>Doctor / Hospital</th><th class="rr-right">Patients</th><th class="rr-right">Tests</th><th class="rr-right">Original Value</th></tr></thead><tbody>';
+    ncDocList.forEach(([n, x]) => {
+      html += '<tr><td><b>' + n + '</b></td><td class="rr-right">' + x.count + '</td><td class="rr-right">' + x.tests + '</td><td class="rr-right">₹' + x.total + '</td></tr>';
     });
     html += '</tbody></table></div>';
   }
