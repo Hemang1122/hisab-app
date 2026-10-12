@@ -5,17 +5,19 @@ let editingEntryId = null;
 function togglePayFields() {
   let status = document.getElementById('ePayStatus').value;
   let paidInput = document.getElementById('ePaid');
-  if (status === 'paid' || status === 'hospital') { paidInput.style.display = 'none'; calcEntry(); }
+  if (status === 'paid' || status === 'hospital' || status === 'cashless' || status === 'nocut') { paidInput.style.display = 'none'; calcEntry(); }
   else { paidInput.style.display = 'block'; paidInput.focus(); calcEntry(); }
 }
 
 function getPaymentInfo() {
   let status = document.getElementById('ePayStatus').value;
   let total = parseInt(document.getElementById('eTotal').textContent) || 0;
-  if (status === 'paid') return { paid: total, balance: 0, hospitalPaid: false };
-  if (status === 'hospital') return { paid: 0, balance: total, hospitalPaid: true };
+  if (status === 'paid') return { paid: total, balance: 0, hospitalPaid: false, cashless: false, noCut: false };
+  if (status === 'hospital') return { paid: 0, balance: total, hospitalPaid: true, cashless: false, noCut: false };
+  if (status === 'cashless') return { paid: total, balance: 0, hospitalPaid: false, cashless: true, noCut: false };
+  if (status === 'nocut') return { paid: 0, balance: 0, hospitalPaid: false, cashless: false, noCut: true };
   let paid = parseFloat(document.getElementById('ePaid').value) || 0;
-  return { paid, balance: Math.max(0, total - paid), hospitalPaid: false };
+  return { paid, balance: Math.max(0, total - paid), hospitalPaid: false, cashless: false, noCut: false };
 }
 
 function initDoctorChange() {
@@ -377,6 +379,8 @@ function saveEntry() {
       total,
       paid: payInfo.paid, balance: payInfo.balance,
       hospitalPaid: payInfo.hospitalPaid,
+      cashless: payInfo.cashless || false,
+      noCut: payInfo.noCut || false,
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
@@ -400,6 +404,8 @@ function saveEntry() {
       total,
       paid: payInfo.paid, balance: payInfo.balance,
       hospitalPaid: payInfo.hospitalPaid,
+      cashless: payInfo.cashless || false,
+      noCut: payInfo.noCut || false,
       paymentMode: document.getElementById('ePayMode').value,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
@@ -469,7 +475,11 @@ function editEntry(id) {
     document.getElementById('eExtraReason').value = e.extraReason || '';
 
     // Payment
-    if (e.hospitalPaid) {
+    if (e.noCut) {
+      document.getElementById('ePayStatus').value = 'nocut';
+    } else if (e.cashless) {
+      document.getElementById('ePayStatus').value = 'cashless';
+    } else if (e.hospitalPaid) {
       document.getElementById('ePayStatus').value = 'hospital';
     } else {
       let isFullPaid = (e.balance || 0) === 0;
@@ -536,7 +546,9 @@ function refreshSidebar() {
     totalAmt += e.total; totalPaid += e.paid;
     let tnames = e.tests.map(t => t.name).join(', ');
     let st;
-    if (e.hospitalPaid) { st = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
+    if (e.noCut) { st = '<span class="badge" style="background:#f3e5f5;color:#6a1b9a">🆓 No Cut</span>'; }
+    else if (e.cashless) { st = '<span class="badge" style="background:#e0f2f1;color:#00695c">💳 Cashless</span>'; }
+    else if (e.hospitalPaid) { st = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
     else if (e.balance > 0) { st = '<span class="badge badge-red">&#8377;' + e.balance + '</span>'; }
     else { st = '<span class="badge badge-green">Paid</span>'; }
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" title="Pay Balance">&#8377;</button>' : '';

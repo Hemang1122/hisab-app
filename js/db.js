@@ -543,9 +543,15 @@ function syncEntriesToRateList() {
       let discAmt = e.discount || 0;
       let extra = e.extra || 0;
       e.total = Math.max(0, e.subtotal - discAmt + extra);
-      if (e.hospitalPaid) {
+      if (e.noCut) {
+        e.paid = 0;
+        e.balance = 0;
+      } else if (e.hospitalPaid) {
         e.paid = 0;
         e.balance = e.total;
+      } else if (e.cashless) {
+        e.paid = e.total;
+        e.balance = 0;
       } else if (oldTotal > 0 && (e.paid || 0) >= oldTotal) {
         // Was fully paid — keep fully paid at new total
         e.paid = e.total;

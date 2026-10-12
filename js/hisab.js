@@ -38,15 +38,25 @@ function generateHisab() {
       docS = Math.round(rawDocS * discountFactor);
       labS = Math.round(rawLabS * discountFactor);
     }
+    // No Cut (Free) — show in hisab but with ₹0 shares, don't add to totals
+    if (e.noCut) { docS = 0; labS = 0; origTotal = 0; }
     // Paid amount capped to original total, balance based on original
     let origPaid = Math.min(e.paid || 0, origTotal);
     let origBal = Math.max(0, origTotal - origPaid);
-    grandTotal += origTotal; grandDoc += docS; grandLab += labS;
-    grandPaid += origPaid; grandBal += origBal; grandDiscount += (e.discount || 0);
+    if (!e.noCut) {
+      grandTotal += origTotal; grandDoc += docS; grandLab += labS;
+      grandPaid += origPaid; grandBal += origBal; grandDiscount += (e.discount || 0);
+    }
     if (e.hospitalPaid) { grandHospital += origTotal; hospitalCount++; }
     let tnames = e.tests.map(t => t.name).join(', ');
     let statusClass, statusText;
-    if (e.hospitalPaid) {
+    if (e.noCut) {
+      statusClass = 'inv-status-nocut';
+      statusText = '🆓 No Cut';
+    } else if (e.cashless) {
+      statusClass = 'inv-status-cashless';
+      statusText = '💳 Cashless';
+    } else if (e.hospitalPaid) {
       statusClass = 'inv-status-hospital';
       statusText = '🏥 Hospital';
     } else if (origBal > 0) {

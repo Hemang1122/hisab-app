@@ -18,7 +18,9 @@ function renderRegister() {
     totalAmt += e.total; totalPaid += e.paid;
     let tnames = e.tests.map(t => t.name).join(', ');
     let status;
-    if (e.hospitalPaid) { status = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
+    if (e.noCut) { status = '<span class="badge" style="background:#f3e5f5;color:#6a1b9a">🆓 No Cut</span>'; }
+    else if (e.cashless) { status = '<span class="badge" style="background:#e0f2f1;color:#00695c">💳 Cashless</span>'; }
+    else if (e.hospitalPaid) { status = '<span class="badge" style="background:#e7f0fd;color:#1e4d8c">🏥 Hospital</span>'; }
     else if (e.balance > 0) { status = '<span class="badge badge-red">₹' + e.balance + ' Baaki</span>'; }
     else { status = '<span class="badge badge-green">Paid</span>'; }
     let payBtn = e.balance > 0 ? '<button class="btn btn-success btn-xs" onclick="updatePayment(\'' + e.id + '\')" style="margin-right:4px">₹ Pay</button>' : '';

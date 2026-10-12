@@ -111,7 +111,7 @@ async function showRevenue() {
       d.byCollector[cName].patients.push({
         date: e.date, name: e.name, doctor: currentDocName,
         total: e.total, paid: e.paid, balance: e.balance,
-        mode: e.paymentMode, status: e.hospitalPaid ? 'hospital' : (e.balance > 0 ? 'due' : 'paid'),
+        mode: e.paymentMode, status: e.noCut ? 'nocut' : (e.cashless ? 'cashless' : (e.hospitalPaid ? 'hospital' : (e.balance > 0 ? 'due' : 'paid'))),
         tests: e.tests.map(t => t.name).join(', ')
       });
     }
