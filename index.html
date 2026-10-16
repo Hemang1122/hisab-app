@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=53">
+<link rel="stylesheet" href="css/styles.css?v=54">
 </head>
 <body>
 
@@ -190,14 +190,51 @@
 <!-- TAB: Register -->
 <div id="tab-register" class="tab">
 <div class="section-header"><button class="back-btn" onclick="showTab('entry')">&larr;</button><h2>&#128203; Register</h2></div>
-<div class="row no-print" style="margin-bottom:10px">
-<div><div class="date-picker">
-<select id="regMonth" onchange="updateDateDropdown('reg');renderRegister()"></select>
-<select id="regDay" onchange="renderRegister()"></select>
-</div></div>
-<div><select id="regDocFilter" onchange="renderRegister()"><option value="">Sabhi Doctors</option></select></div>
-<div><input id="regSearch" placeholder="Search naam..." oninput="renderRegister()"></div>
+<div class="no-print" style="margin-bottom:10px">
+<!-- Row 1: Date mode toggle + date controls -->
+<div class="row" style="margin-bottom:6px;align-items:center">
+<div style="display:flex;gap:4px;align-items:center">
+  <button id="regDateModeDay" class="btn btn-sm btn-primary" onclick="setRegDateMode('day')" style="font-size:11px;padding:4px 10px">📅 Din</button>
+  <button id="regDateModeRange" class="btn btn-sm btn-secondary" onclick="setRegDateMode('range')" style="font-size:11px;padding:4px 10px">📆 Range</button>
 </div>
+<div id="regDayPicker" class="date-picker" style="display:flex">
+  <select id="regMonth" onchange="updateDateDropdown('reg');renderRegister()"></select>
+  <select id="regDay" onchange="renderRegister()"></select>
+</div>
+<div id="regRangePicker" style="display:none;gap:6px;align-items:center">
+  <input type="date" id="regFromDate" onchange="renderRegister()" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+  <span style="font-size:12px;color:#888">→</span>
+  <input type="date" id="regToDate" onchange="renderRegister()" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+</div>
+</div>
+<!-- Row 2: Filters -->
+<div class="row" style="margin-bottom:6px;align-items:center;flex-wrap:wrap;gap:6px">
+<div><select id="regDocFilter" onchange="renderRegister()" style="font-size:12px"><option value="">Sabhi Doctors</option></select></div>
+<div><select id="regPayFilter" onchange="renderRegister()" style="font-size:12px">
+  <option value="">Sabhi Payment</option>
+  <option value="paid">✅ Paid</option>
+  <option value="balance">💰 Balance</option>
+  <option value="hold">⏸️ Hold</option>
+  <option value="cashless">💳 Cashless</option>
+  <option value="nocut">🆓 No Cut</option>
+  <option value="hospital">🏥 Hospital</option>
+</select></div>
+<div><select id="regModeFilter" onchange="renderRegister()" style="font-size:12px">
+  <option value="">Sabhi Mode</option>
+  <option value="Cash">Cash</option>
+  <option value="GPay">GPay</option>
+  <option value="PhonePe">PhonePe</option>
+  <option value="UPI">UPI</option>
+  <option value="Card">Card</option>
+  <option value="Online">Online</option>
+  <option value="Other">Other</option>
+</select></div>
+<div><select id="regCollFilter" onchange="renderRegister()" style="font-size:12px"><option value="">Sabhi Collectors</option></select></div>
+<div><input id="regSearch" placeholder="Search naam..." oninput="renderRegister()" style="font-size:12px"></div>
+</div>
+</div>
+<!-- Summary stats bar -->
+<div id="regSummaryBar" style="margin-bottom:10px"></div>
 <div id="registerList"></div>
 </div>
 
@@ -505,18 +542,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=53"></script>
-<script src="js/ui.js?v=53"></script>
-<script src="js/ratelist.js?v=53"></script>
-<script src="js/doctors.js?v=53"></script>
-<script src="js/entry.js?v=53"></script>
-<script src="js/aarush.js?v=53"></script>
-<script src="js/register.js?v=53"></script>
-<script src="js/hisab.js?v=53"></script>
-<script src="js/revenue.js?v=53"></script>
-<script src="js/mywork.js?v=53"></script>
-<script src="js/materials.js?v=53"></script>
-<script src="js/backup.js?v=53"></script>
+<script src="js/db.js?v=54"></script>
+<script src="js/ui.js?v=54"></script>
+<script src="js/ratelist.js?v=54"></script>
+<script src="js/doctors.js?v=54"></script>
+<script src="js/entry.js?v=54"></script>
+<script src="js/aarush.js?v=54"></script>
+<script src="js/register.js?v=54"></script>
+<script src="js/hisab.js?v=54"></script>
+<script src="js/revenue.js?v=54"></script>
+<script src="js/mywork.js?v=54"></script>
+<script src="js/materials.js?v=54"></script>
+<script src="js/backup.js?v=54"></script>
 
 <!-- Init -->
 <script>

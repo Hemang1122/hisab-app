@@ -74,7 +74,7 @@ function showTab(t, skipHistory) {
     history.pushState({ tab: t }, '', '#' + t);
   }
 
-  if (t === 'register') renderRegister();
+  if (t === 'register') { if (typeof initRegCollectorFilter === 'function') initRegCollectorFilter(); renderRegister(); }
   if (t === 'ratelist') renderRateLists();
   if (t === 'doctors') renderDoctors();
   if (t === 'mywork') { if (typeof populateMyWorkOperators === 'function') populateMyWorkOperators(); if (typeof initMyWorkDates === 'function') initMyWorkDates(); }
