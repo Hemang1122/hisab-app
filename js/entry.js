@@ -1,6 +1,72 @@
 // ========== ENTRY FORM ==========
 
 let editingEntryId = null;
+let payModeSplits = []; // [{mode:'Cash', amount:200}, ...]
+
+function addPayModeSplit() {
+  let mode = document.getElementById('ePayModeAdd').value;
+  let amt = parseFloat(document.getElementById('ePayModeAmt').value) || 0;
+  if (amt <= 0) {
+    // If no amount, just set as single mode (backward compat shortcut)
+    payModeSplits = [{ mode: mode, amount: 0 }];
+    renderPayModeSplits();
+    return;
+  }
+  // Check if mode already exists, add to it
+  let existing = payModeSplits.find(s => s.mode === mode);
+  if (existing) {
+    existing.amount += amt;
+  } else {
+    payModeSplits.push({ mode: mode, amount: amt });
+  }
+  document.getElementById('ePayModeAmt').value = '';
+  renderPayModeSplits();
+}
+
+function removePayModeSplit(idx) {
+  payModeSplits.splice(idx, 1);
+  renderPayModeSplits();
+}
+
+function renderPayModeSplits() {
+  let container = document.getElementById('payModeSplits');
+  if (!container) return;
+  if (!payModeSplits.length) { container.innerHTML = ''; updatePayModeSplitInfo(); return; }
+  let html = payModeSplits.map((s, i) => {
+    let amtLabel = s.amount > 0 ? ' ₹' + s.amount : '';
+    return '<span class="pay-split-chip">' + s.mode + amtLabel +
+      ' <span onclick="removePayModeSplit(' + i + ')" style="cursor:pointer;margin-left:3px;opacity:.6">✕</span></span>';
+  }).join(' ');
+  container.innerHTML = html;
+  updatePayModeSplitInfo();
+}
+
+function updatePayModeSplitInfo() {
+  let info = document.getElementById('payModeSplitInfo');
+  if (!info) return;
+  if (payModeSplits.length <= 1) { info.innerHTML = ''; return; }
+  let totalSplit = payModeSplits.reduce((s, x) => s + (x.amount || 0), 0);
+  info.innerHTML = 'Split total: ₹' + totalSplit;
+}
+
+function getPayModeSplitsData() {
+  // Returns { paymentMode, paymentModes }
+  if (!payModeSplits.length) {
+    return { paymentMode: 'Cash', paymentModes: [] };
+  }
+  if (payModeSplits.length === 1) {
+    return { paymentMode: payModeSplits[0].mode, paymentModes: payModeSplits[0].amount > 0 ? payModeSplits : [] };
+  }
+  // Multiple splits — primary is the one with highest amount
+  let sorted = [...payModeSplits].sort((a, b) => b.amount - a.amount);
+  return { paymentMode: sorted[0].mode, paymentModes: payModeSplits };
+}
+
+function resetPayModeSplits() {
+  payModeSplits = [];
+  renderPayModeSplits();
+  document.getElementById('ePayModeAmt').value = '';
+}
 
 function togglePayFields() {
   let status = document.getElementById('ePayStatus').value;
@@ -9,7 +75,8 @@ function togglePayFields() {
   else { paidInput.style.display = 'block'; paidInput.focus(); calcEntry(); }
   // Auto-set payment mode to "Hospital Collected" when cashless is selected
   if (status === 'cashless') {
-    document.getElementById('ePayMode').value = 'Hospital Collected';
+    payModeSplits = [{ mode: 'Hospital Collected', amount: 0 }];
+    renderPayModeSplits();
   }
 }
 
@@ -401,7 +468,8 @@ function saveEntry() {
       cashless: payInfo.cashless || false,
       noCut: payInfo.noCut || false,
       hold: payInfo.hold || false,
-      paymentMode: document.getElementById('ePayMode').value,
+      paymentMode: getPayModeSplitsData().paymentMode,
+      paymentModes: getPayModeSplitsData().paymentModes,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
       updatedBy: (typeof getOperator === 'function' ? getOperator() : ''),
@@ -428,7 +496,8 @@ function saveEntry() {
       cashless: payInfo.cashless || false,
       noCut: payInfo.noCut || false,
       hold: payInfo.hold || false,
-      paymentMode: document.getElementById('ePayMode').value,
+      paymentMode: getPayModeSplitsData().paymentMode,
+      paymentModes: getPayModeSplitsData().paymentModes,
       collectorId: document.getElementById('eCollector').value,
       collectorName: (collectors.find(c => c.id === document.getElementById('eCollector').value) || {}).name || '',
       filledBy: (typeof getOperator === 'function' ? getOperator() : ''),
@@ -445,6 +514,7 @@ function saveEntry() {
   document.getElementById('eExtraInHisab').checked = false;
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
+  resetPayModeSplits();
   togglePayFields();
   document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
   calcEntry();
@@ -514,8 +584,13 @@ function editEntry(id) {
     }
     togglePayFields();
 
-    // Payment mode
-    document.getElementById('ePayMode').value = e.paymentMode || 'Cash';
+    // Payment mode splits
+    if (e.paymentModes && e.paymentModes.length) {
+      payModeSplits = JSON.parse(JSON.stringify(e.paymentModes));
+    } else {
+      payModeSplits = [{ mode: e.paymentMode || 'Cash', amount: 0 }];
+    }
+    renderPayModeSplits();
 
     // Collector
     document.getElementById('eCollector').value = e.collectorId || '';
@@ -543,6 +618,7 @@ function cancelEditEntry() {
   document.getElementById('eExtraInHisab').checked = false;
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
+  resetPayModeSplits();
   togglePayFields();
   document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
   calcEntry();
@@ -597,7 +673,7 @@ function refreshSidebar() {
 
 // ========== KEYBOARD FLOW ==========
 function initKeyboardFlow() {
-  const FIELD_ORDER = ['eDoctorSearch', 'eName', 'eDisc', 'eDiscType', 'eExtra', 'eExtraReason', 'ePayStatus', 'ePaid', 'ePayMode', 'eCollector'];
+  const FIELD_ORDER = ['eDoctorSearch', 'eName', 'eDisc', 'eDiscType', 'eExtra', 'eExtraReason', 'ePayStatus', 'ePaid', 'ePayModeAdd', 'ePayModeAmt', 'eCollector'];
   function nextField(currentId) {
     let idx = FIELD_ORDER.indexOf(currentId);
     if (idx < 0) return;

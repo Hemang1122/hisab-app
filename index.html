@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=54">
+<link rel="stylesheet" href="css/styles.css?v=55">
 </head>
 <body>
 
@@ -164,7 +164,16 @@
 <span id="balDisplay"></span>
 </div></div>
 <div><label>Payment Mode</label>
-<select id="ePayMode"><option>Cash</option><option>GPay</option><option>PhonePe</option><option>UPI</option><option>Card</option><option>Online</option><option>Cashless</option><option>Hospital Collected</option><option>Other</option></select></div>
+<div id="payModeSplitArea">
+  <div id="payModeSplits"></div>
+  <div style="display:flex;gap:4px;align-items:center;margin-top:4px">
+    <select id="ePayModeAdd" style="flex:1;font-size:12px"><option>Cash</option><option>GPay</option><option>PhonePe</option><option>UPI</option><option>Card</option><option>Online</option><option>Cashless</option><option>Hospital Collected</option><option>Other</option></select>
+    <input id="ePayModeAmt" type="number" placeholder="₹ Amount" style="width:90px;font-size:12px;padding:6px">
+    <button type="button" class="btn btn-sm btn-primary" onclick="addPayModeSplit()" style="font-size:11px;padding:4px 8px">+ Add</button>
+  </div>
+  <div id="payModeSplitInfo" style="font-size:11px;color:#888;margin-top:2px"></div>
+</div>
+</div>
 </div>
 <div class="row">
 <div><label>Collection Boy</label>
@@ -542,18 +551,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=54"></script>
-<script src="js/ui.js?v=54"></script>
-<script src="js/ratelist.js?v=54"></script>
-<script src="js/doctors.js?v=54"></script>
-<script src="js/entry.js?v=54"></script>
-<script src="js/aarush.js?v=54"></script>
-<script src="js/register.js?v=54"></script>
-<script src="js/hisab.js?v=54"></script>
-<script src="js/revenue.js?v=54"></script>
-<script src="js/mywork.js?v=54"></script>
-<script src="js/materials.js?v=54"></script>
-<script src="js/backup.js?v=54"></script>
+<script src="js/db.js?v=55"></script>
+<script src="js/ui.js?v=55"></script>
+<script src="js/ratelist.js?v=55"></script>
+<script src="js/doctors.js?v=55"></script>
+<script src="js/entry.js?v=55"></script>
+<script src="js/aarush.js?v=55"></script>
+<script src="js/register.js?v=55"></script>
+<script src="js/hisab.js?v=55"></script>
+<script src="js/revenue.js?v=55"></script>
+<script src="js/mywork.js?v=55"></script>
+<script src="js/materials.js?v=55"></script>
+<script src="js/backup.js?v=55"></script>
 
 <!-- Init -->
 <script>

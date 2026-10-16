@@ -58,8 +58,14 @@ function generateHisab() {
     dailyPay[e.date].paid += origPaid;
     dailyPay[e.date].balance += origBal;
     if (origPaid > 0) {
-      let pm = e.paymentMode || 'Cash';
-      dailyPay[e.date].byMode[pm] = (dailyPay[e.date].byMode[pm] || 0) + origPaid;
+      if (e.paymentModes && e.paymentModes.length > 1) {
+        e.paymentModes.forEach(s => {
+          if (s.amount > 0) dailyPay[e.date].byMode[s.mode] = (dailyPay[e.date].byMode[s.mode] || 0) + s.amount;
+        });
+      } else {
+        let pm = e.paymentMode || 'Cash';
+        dailyPay[e.date].byMode[pm] = (dailyPay[e.date].byMode[pm] || 0) + origPaid;
+      }
     }
     let tnames = e.tests.map(t => t.name).join(', ');
     let statusClass, statusText;
@@ -110,7 +116,9 @@ function generateHisab() {
       detailHtml += '<div style="color:#e65100;font-size:10px"><b>Extra:</b> ₹' + e.extra + ' (' + (e.extraReason || '-') + ') — not in hisab</div>';
     }
     // Payment info
-    detailHtml += '<div style="font-size:10px;margin-top:3px"><b>Payment:</b> ' + (e.paymentMode || 'Cash') +
+    let modeStr = (e.paymentModes && e.paymentModes.length > 1) ?
+      e.paymentModes.map(s => s.mode + ' ₹' + s.amount).join(' + ') : (e.paymentMode || 'Cash');
+    detailHtml += '<div style="font-size:10px;margin-top:3px"><b>Payment:</b> ' + modeStr +
       ' · Paid: ₹' + (e.paid || 0) + ' · Balance: ₹' + origBal +
       ' · Doctor: ' + currentDocName + '</div>';
     detailHtml += '</div>';

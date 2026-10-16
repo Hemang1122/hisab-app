@@ -617,6 +617,13 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
 .reg-chip-gray { background:#f5f5f5; color:#555; cursor:default; }
 .reg-chip-gray:hover { opacity:1; }
 
+/* Payment mode split chips */
+.pay-split-chip {
+  display:inline-flex; align-items:center; gap:2px;
+  background:#e3f2fd; color:#1565c0; padding:3px 8px; border-radius:12px;
+  font-size:11px; font-weight:600; margin:2px;
+}
+
 .inv-summary {
   display:flex; flex-wrap:wrap; gap:12px; padding:20px 24px; background:var(--n50);
   border-top:1px solid var(--n200);

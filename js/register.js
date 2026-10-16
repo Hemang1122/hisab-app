@@ -2,6 +2,13 @@
 
 let regDateMode = 'day'; // 'day' or 'range'
 
+function formatPayModes(e) {
+  if (e.paymentModes && e.paymentModes.length > 1) {
+    return e.paymentModes.map(s => s.mode + (s.amount > 0 ? ' ₹' + s.amount : '')).join(' + ');
+  }
+  return e.paymentMode || 'Cash';
+}
+
 function setRegDateMode(mode) {
   regDateMode = mode;
   document.getElementById('regDateModeDay').className = 'btn btn-sm ' + (mode === 'day' ? 'btn-primary' : 'btn-secondary');
@@ -67,8 +74,14 @@ function renderRegister() {
       let ps = getRegPayStatus(e);
       if (ps !== payFilter) return false;
     }
-    // Payment mode filter
-    if (modeFilter && e.paymentMode !== modeFilter) return false;
+    // Payment mode filter (check splits too)
+    if (modeFilter) {
+      if (e.paymentModes && e.paymentModes.length) {
+        if (!e.paymentModes.some(s => s.mode === modeFilter)) return false;
+      } else {
+        if (e.paymentMode !== modeFilter) return false;
+      }
+    }
     // Collector filter
     if (collFilter && e.collectorId !== collFilter) return false;
     // Search
@@ -109,7 +122,7 @@ function renderRegister() {
       '<td>' + (i + 1) + '</td>' + dateCol + '<td>' + e.name + '</td><td>' + (e.age || '-') + '/' + e.gender + '</td>' +
       '<td>' + docName + '</td><td style="font-size:11px">' + tnames + '</td>' +
       '<td>₹' + e.total + '</td><td>₹' + e.paid + '</td><td>' + status + '</td>' +
-      '<td>' + e.paymentMode + '</td><td>' + collName + '</td>' +
+      '<td style="font-size:11px">' + formatPayModes(e) + '</td><td>' + collName + '</td>' +
       '<td>' + payBtn + '</td></tr>';
   }).join('');
   let dateHeader = regDateMode === 'range' ? '<th>Date</th>' : '';
@@ -146,8 +159,12 @@ function renderRegSummary(filtered) {
     else if (ps === 'nocut') noCutCount++;
     else if (ps === 'hospital') hospCount++;
 
-    let mode = e.paymentMode || 'Other';
-    modeCounts[mode] = (modeCounts[mode] || 0) + 1;
+    if (e.paymentModes && e.paymentModes.length > 1) {
+      e.paymentModes.forEach(s => { modeCounts[s.mode] = (modeCounts[s.mode] || 0) + 1; });
+    } else {
+      let mode = e.paymentMode || 'Other';
+      modeCounts[mode] = (modeCounts[mode] || 0) + 1;
+    }
 
     if (e.collectorId) {
       let liveColl = collectors.find(cc => cc.id === e.collectorId);
