@@ -41,6 +41,9 @@ async function showRevenue() {
   d.cashlessByDoctor = {}; d.cashlessByDate = {};
   d.noCutEntries = []; d.noCutTotal = 0; d.noCutCount = 0;
   d.noCutByDoctor = {};
+  // Hold tracking
+  d.holdEntries = []; d.holdTotal = 0; d.holdCount = 0;
+  d.holdByDoctor = {};
 
   filtered.forEach(e => {
     // Raw shares from stored data
@@ -103,7 +106,7 @@ async function showRevenue() {
     if (cName) {
       if (!d.byCollector[cName]) d.byCollector[cName] = {
         samples: 0, revenue: 0, paid: 0, balance: 0, tests: 0,
-        byMode: {}, patients: []
+        byMode: {}, byDoctor: {}, patients: []
       };
       d.byCollector[cName].samples++;
       d.byCollector[cName].revenue += e.total;
@@ -113,10 +116,19 @@ async function showRevenue() {
       if (e.paid > 0) {
         d.byCollector[cName].byMode[e.paymentMode] = (d.byCollector[cName].byMode[e.paymentMode] || 0) + e.paid;
       }
+      // Per-doctor breakdown within collector
+      if (!d.byCollector[cName].byDoctor[currentDocName]) {
+        d.byCollector[cName].byDoctor[currentDocName] = { samples: 0, revenue: 0, paid: 0, balance: 0, tests: 0 };
+      }
+      d.byCollector[cName].byDoctor[currentDocName].samples++;
+      d.byCollector[cName].byDoctor[currentDocName].revenue += e.total;
+      d.byCollector[cName].byDoctor[currentDocName].paid += e.paid;
+      d.byCollector[cName].byDoctor[currentDocName].balance += e.balance;
+      d.byCollector[cName].byDoctor[currentDocName].tests += e.tests.length;
       d.byCollector[cName].patients.push({
         date: e.date, name: e.name, doctor: currentDocName,
         total: e.total, paid: e.paid, balance: e.balance,
-        mode: e.paymentMode, status: e.noCut ? 'nocut' : (e.cashless ? 'cashless' : (e.hospitalPaid ? 'hospital' : (e.balance > 0 ? 'due' : 'paid'))),
+        mode: e.paymentMode, status: e.hold ? 'hold' : (e.noCut ? 'nocut' : (e.cashless ? 'cashless' : (e.hospitalPaid ? 'hospital' : (e.balance > 0 ? 'due' : 'paid')))),
         tests: e.tests.map(t => t.name).join(', ')
       });
     }
@@ -177,6 +189,26 @@ async function showRevenue() {
       d.noCutEntries.push({
         date: e.date, name: e.name, doctorName: ncDocName,
         tests: e.tests.map(t => t.name).join(', '), total: e.subtotal || e.total || 0,
+        testCount: e.tests.length
+      });
+    }
+    // Hold tracking
+    if (e.hold) {
+      d.holdCount++;
+      d.holdTotal += e.total || 0;
+      let liveDocH = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(x => x.id === e.doctorId) : null;
+      let hDocName = liveDocH ? liveDocH.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : 'Unknown'));
+      if (!d.holdByDoctor[hDocName]) d.holdByDoctor[hDocName] = { count: 0, total: 0, tests: 0, patients: [] };
+      d.holdByDoctor[hDocName].count++;
+      d.holdByDoctor[hDocName].total += e.total || 0;
+      d.holdByDoctor[hDocName].tests += e.tests.length;
+      d.holdByDoctor[hDocName].patients.push({
+        date: e.date, name: e.name, tests: e.tests.map(t => t.name).join(', '),
+        total: e.total || 0, testCount: e.tests.length
+      });
+      d.holdEntries.push({
+        date: e.date, name: e.name, doctorName: hDocName,
+        tests: e.tests.map(t => t.name).join(', '), total: e.total || 0,
         testCount: e.tests.length
       });
     }
@@ -254,14 +286,17 @@ function renderOverview(d) {
   html += statCard('yellow', 'Avg Ticket', d.filtered.length ? Math.round(d.totalRevenue / d.filtered.length) : 0);
   html += '</div>';
 
-  // Cashless + No Cut quick stats
-  if (d.cashlessCount > 0 || d.noCutCount > 0) {
+  // Cashless + No Cut + Hold quick stats
+  if (d.cashlessCount > 0 || d.noCutCount > 0 || d.holdCount > 0) {
     html += '<div class="stat-grid">';
     if (d.cashlessCount > 0) {
       html += statCard('purple', '💳 Cashless', d.cashlessCount + ' · ₹' + d.cashlessTotal.toLocaleString('en-IN'), true);
     }
     if (d.noCutCount > 0) {
       html += statCard('red', '🆓 No Cut', d.noCutCount + ' · ₹' + d.noCutTotal.toLocaleString('en-IN'), true);
+    }
+    if (d.holdCount > 0) {
+      html += statCard('yellow', '⏸️ On Hold', d.holdCount + ' · ₹' + d.holdTotal.toLocaleString('en-IN'), true);
     }
     html += '</div>';
   }
@@ -379,6 +414,25 @@ function renderByCollector(d) {
     html += '<div style="font-size:12px;color:#666">' + c.samples + ' samples · ' + c.tests + ' tests · ₹' + c.revenue + ' revenue</div>';
     html += '</div>';
 
+    // Doctor/Hospital breakdown for this collector
+    let docEntries = Object.entries(c.byDoctor).sort((a, b) => b[1].revenue - a[1].revenue);
+    if (docEntries.length > 0) {
+      html += '<div style="margin-bottom:14px;border:1px solid var(--n150);border-radius:6px;overflow:hidden">';
+      html += '<div style="background:#f0f7ff;color:#1565c0;padding:6px 12px;font-size:12px;font-weight:700">🏥 Doctor / Hospital Breakdown</div>';
+      html += '<div style="overflow-x:auto"><table style="font-size:11px;margin:0"><thead><tr style="background:#f5f5f5"><th style="padding:4px 8px;text-align:left">Doctor/Hospital</th><th style="padding:4px 8px;text-align:right">Samples</th><th style="padding:4px 8px;text-align:right">Tests</th><th style="padding:4px 8px;text-align:right">Revenue</th><th style="padding:4px 8px;text-align:right">Paid</th><th style="padding:4px 8px;text-align:right">Balance</th></tr></thead><tbody>';
+      docEntries.forEach(([dName, dd]) => {
+        html += '<tr>' +
+          '<td style="padding:4px 8px;font-weight:600">' + dName + '</td>' +
+          '<td style="padding:4px 8px;text-align:right">' + dd.samples + '</td>' +
+          '<td style="padding:4px 8px;text-align:right">' + dd.tests + '</td>' +
+          '<td style="padding:4px 8px;text-align:right;font-weight:600">₹' + dd.revenue.toLocaleString('en-IN') + '</td>' +
+          '<td style="padding:4px 8px;text-align:right;color:#1b874b">₹' + dd.paid.toLocaleString('en-IN') + '</td>' +
+          '<td style="padding:4px 8px;text-align:right;color:' + (dd.balance > 0 ? '#c44536' : '#999') + '">₹' + dd.balance.toLocaleString('en-IN') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
+
     // Payment mode summary chips
     html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">';
     let modeEntries = Object.entries(c.byMode).sort((a, b) => b[1] - a[1]);
@@ -397,7 +451,10 @@ function renderByCollector(d) {
     let groups = {};
     c.patients.forEach(p => {
       let key;
-      if (p.status === 'hospital') key = '🏥 Hospital Paid';
+      if (p.status === 'hold') key = '⏸️ On Hold';
+      else if (p.status === 'nocut') key = '🆓 No Cut';
+      else if (p.status === 'cashless') key = '💳 Cashless';
+      else if (p.status === 'hospital') key = '🏥 Hospital Paid';
       else if (p.status === 'due') key = '⏳ Balance Due';
       else key = '💵 ' + (p.mode || 'Cash');
       if (!groups[key]) groups[key] = { patients: [], totalPaid: 0, totalBalance: 0 };
@@ -406,13 +463,16 @@ function renderByCollector(d) {
       groups[key].totalBalance += p.balance;
     });
 
-    // Order: Cash first, then GPay/UPI, then others, then Hospital, then Due
+    // Order: Cash first, then GPay/UPI, then others, then Hospital, Cashless, No Cut, Hold, then Due
     let orderedKeys = Object.keys(groups).sort((a, b) => {
       let order = (k) => {
-        if (k.includes('Cash')) return 1;
+        if (k.includes('Cash') && !k.includes('Cashless')) return 1;
         if (k.includes('GPay') || k.includes('PhonePe') || k.includes('UPI')) return 2;
         if (k.includes('Hospital')) return 4;
-        if (k.includes('Due')) return 5;
+        if (k.includes('Cashless')) return 5;
+        if (k.includes('No Cut')) return 6;
+        if (k.includes('Hold')) return 7;
+        if (k.includes('Due')) return 8;
         return 3;
       };
       return order(a) - order(b);
@@ -422,8 +482,11 @@ function renderByCollector(d) {
       let g = groups[key];
       let isDue = key.includes('Due');
       let isHospital = key.includes('Hospital');
-      let headerColor = isDue ? '#c44536' : (isHospital ? '#1e4d8c' : (key.includes('Cash') ? '#1b874b' : '#5a3c88'));
-      let bg = isDue ? '#fceae8' : (isHospital ? '#e7f0fd' : (key.includes('Cash') ? '#e6f5ed' : '#f0ecf6'));
+      let isHold = key.includes('Hold');
+      let isNoCut = key.includes('No Cut');
+      let isCashless = key.includes('Cashless');
+      let headerColor = isDue ? '#c44536' : (isHold ? '#e65100' : (isNoCut ? '#6a1b9a' : (isCashless ? '#00695c' : (isHospital ? '#1e4d8c' : (key.includes('Cash') ? '#1b874b' : '#5a3c88')))));
+      let bg = isDue ? '#fceae8' : (isHold ? '#fff3e0' : (isNoCut ? '#f3e5f5' : (isCashless ? '#e0f2f1' : (isHospital ? '#e7f0fd' : (key.includes('Cash') ? '#e6f5ed' : '#f0ecf6')))));
 
       html += '<div style="margin-bottom:10px;border:1px solid var(--n150);border-radius:6px;overflow:hidden">';
       html += '<div style="background:' + bg + ';color:' + headerColor + ';padding:6px 12px;font-size:12px;font-weight:700;display:flex;justify-content:space-between;align-items:center">';

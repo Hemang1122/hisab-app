@@ -594,6 +594,10 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
   background:#e0f2f1; color:#00695c; padding:2px 8px; border-radius:10px;
   font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;
 }
+.inv-status-hold {
+  background:#fff3e0; color:#e65100; padding:2px 8px; border-radius:10px;
+  font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;
+}
 .inv-sum-hospital .inv-sum-value { color:#1e4d8c; }
 .inv-sum-hospital { border-left:3px solid #1e4d8c; }
 
@@ -713,7 +717,7 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
   #printArea .inv-table td { padding:5px 6px; }
   #printArea .inv-cell-tests { font-size:9.5px; max-width:none; word-break:break-word; }
   #printArea .inv-cell-date { font-size:10px; }
-  #printArea .inv-status-paid, #printArea .inv-status-due, #printArea .inv-status-hospital, #printArea .inv-status-nocut, #printArea .inv-status-cashless { font-size:9px; padding:1.5px 6px; }
+  #printArea .inv-status-paid, #printArea .inv-status-due, #printArea .inv-status-hospital, #printArea .inv-status-nocut, #printArea .inv-status-cashless, #printArea .inv-status-hold { font-size:9px; padding:1.5px 6px; }
   #printArea .inv-summary { padding:12px 18px; gap:8px; }
   #printArea .inv-sum-card { padding:10px 12px; min-width:100px; }
   #printArea .inv-sum-icon { font-size:16px; }
@@ -724,6 +728,8 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
   #printArea .inv-sig-title { font-size:9px; }
   #printArea .inv-sig-name { font-size:10px; }
   #printArea .inv-footer { padding:7px 18px; font-size:9px; }
+  #printArea .no-print-detail { display:none !important; }
+  #printArea .hisab-detail-row { display:none !important; }
 
   /* Revenue report also A4 portrait */
   .rr-metrics { grid-template-columns:repeat(4,1fr); }
