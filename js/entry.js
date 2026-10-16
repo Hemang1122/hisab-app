@@ -394,6 +394,7 @@ function saveEntry() {
       doctorId: docVal, doctorName: docName, name,
       tests, subtotal, discount: discAmt,
       extra: extra, extraReason: extraReason,
+      extraInHisab: document.getElementById('eExtraInHisab').checked || false,
       total,
       paid: payInfo.paid, balance: payInfo.balance,
       hospitalPaid: payInfo.hospitalPaid,
@@ -420,6 +421,7 @@ function saveEntry() {
       age: '', gender: '',
       tests, subtotal, discount: discAmt,
       extra: extra, extraReason: extraReason,
+      extraInHisab: document.getElementById('eExtraInHisab').checked || false,
       total,
       paid: payInfo.paid, balance: payInfo.balance,
       hospitalPaid: payInfo.hospitalPaid,
@@ -440,6 +442,7 @@ function saveEntry() {
   document.getElementById('eDisc').value = '';
   document.getElementById('eExtra').value = '';
   document.getElementById('eExtraReason').value = '';
+  document.getElementById('eExtraInHisab').checked = false;
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
   togglePayFields();
@@ -493,6 +496,7 @@ function editEntry(id) {
     // Extra
     document.getElementById('eExtra').value = e.extra || '';
     document.getElementById('eExtraReason').value = e.extraReason || '';
+    document.getElementById('eExtraInHisab').checked = e.extraInHisab || false;
 
     // Payment
     if (e.hold) {
@@ -536,6 +540,7 @@ function cancelEditEntry() {
   document.getElementById('eDisc').value = '';
   document.getElementById('eExtra').value = '';
   document.getElementById('eExtraReason').value = '';
+  document.getElementById('eExtraInHisab').checked = false;
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
   togglePayFields();

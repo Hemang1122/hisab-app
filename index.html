@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SBCL Hisab</title>
-<link rel="stylesheet" href="css/styles.css?v=52">
+<link rel="stylesheet" href="css/styles.css?v=53">
 </head>
 <body>
 
@@ -146,6 +146,7 @@
 <div class="row">
 <input id="eExtra" type="number" placeholder="0" oninput="calcEntry()" title="Extra amount taken from patient">
 <input id="eExtraReason" type="text" placeholder="Reason (optional)" style="flex:2">
+<label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;cursor:pointer" title="Include extra in hisab print"><input type="checkbox" id="eExtraInHisab"> Hisab</label>
 </div></div>
 </div>
 <div class="row">
@@ -298,6 +299,7 @@
 <button class="rev-tab-btn" data-rsection="operator" onclick="switchRevSection('operator')">👤 Operators</button>
 <button class="rev-tab-btn" data-rsection="payment" onclick="switchRevSection('payment')">💳 Payment Modes</button>
 <button class="rev-tab-btn" data-rsection="cashless" onclick="switchRevSection('cashless')">💳 Cashless</button>
+<button class="rev-tab-btn" data-rsection="discounts" onclick="switchRevSection('discounts')">🏷️ Discounts</button>
 <button class="rev-tab-btn" data-rsection="extras" onclick="switchRevSection('extras')">💵 Extras</button>
 <button class="rev-tab-btn" data-rsection="materials" onclick="switchRevSection('materials')">🧪 Materials</button>
 <button class="rev-tab-btn" data-rsection="entries" onclick="switchRevSection('entries')">📋 All Entries</button>
@@ -503,18 +505,18 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- App JS Files -->
-<script src="js/db.js?v=52"></script>
-<script src="js/ui.js?v=52"></script>
-<script src="js/ratelist.js?v=52"></script>
-<script src="js/doctors.js?v=52"></script>
-<script src="js/entry.js?v=52"></script>
-<script src="js/aarush.js?v=52"></script>
-<script src="js/register.js?v=52"></script>
-<script src="js/hisab.js?v=52"></script>
-<script src="js/revenue.js?v=52"></script>
-<script src="js/mywork.js?v=52"></script>
-<script src="js/materials.js?v=52"></script>
-<script src="js/backup.js?v=52"></script>
+<script src="js/db.js?v=53"></script>
+<script src="js/ui.js?v=53"></script>
+<script src="js/ratelist.js?v=53"></script>
+<script src="js/doctors.js?v=53"></script>
+<script src="js/entry.js?v=53"></script>
+<script src="js/aarush.js?v=53"></script>
+<script src="js/register.js?v=53"></script>
+<script src="js/hisab.js?v=53"></script>
+<script src="js/revenue.js?v=53"></script>
+<script src="js/mywork.js?v=53"></script>
+<script src="js/materials.js?v=53"></script>
+<script src="js/backup.js?v=53"></script>
 
 <!-- Init -->
 <script>

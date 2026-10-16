@@ -44,6 +44,8 @@ async function showRevenue() {
   // Hold tracking
   d.holdEntries = []; d.holdTotal = 0; d.holdCount = 0;
   d.holdByDoctor = {};
+  // Discount tracking
+  d.discEntries = []; d.discByDoctor = {}; d.discByDate = {};
 
   filtered.forEach(e => {
     // Raw shares from stored data
@@ -86,6 +88,22 @@ async function showRevenue() {
         extra: e.extra, reason: e.extraReason || '',
         subtotal: e.subtotal, total: e.total
       });
+    }
+    // Discount tracking
+    if ((e.discount || 0) > 0) {
+      d.discEntries.push({
+        date: e.date, name: e.name, doctorName: currentDocName,
+        tests: e.tests.map(t => t.name).join(', '),
+        discount: e.discount, subtotal: e.subtotal || 0, total: e.total,
+        paid: e.paid, balance: e.balance, paymentMode: e.paymentMode || 'Cash'
+      });
+      if (!d.discByDoctor[currentDocName]) d.discByDoctor[currentDocName] = { count: 0, totalDisc: 0, revenue: 0 };
+      d.discByDoctor[currentDocName].count++;
+      d.discByDoctor[currentDocName].totalDisc += e.discount;
+      d.discByDoctor[currentDocName].revenue += e.total;
+      if (!d.discByDate[e.date]) d.discByDate[e.date] = { count: 0, totalDisc: 0 };
+      d.discByDate[e.date].count++;
+      d.discByDate[e.date].totalDisc += e.discount;
     }
 
     let dName = currentDocName;
@@ -244,6 +262,7 @@ function renderRevenueSection() {
     case 'collector': html = renderByCollector(d); break;
     case 'operator': html = renderByOperator(d); break;
     case 'payment': html = renderByPayment(d); break;
+    case 'discounts': html = renderDiscounts(d); break;
     case 'extras': html = renderExtras(d); break;
     case 'materials': html = renderMaterials(d); break;
     case 'cashless': html = renderCashless(d); break;
@@ -558,6 +577,97 @@ function renderByPayment(d) {
     html += '<div class="stat-card green" style="text-align:center;padding:16px"><div class="stat-label">' + mode + '</div><div class="stat-value" style="font-size:22px">₹' + amt + '</div><div style="font-size:11px;color:var(--gray-400)">' + pct + '% of total paid</div></div>';
   });
   html += '</div></div>';
+  return html;
+}
+
+// ========== DISCOUNTS ==========
+function renderDiscounts(d) {
+  if (!d.discEntries.length) return '<div class="card"><div class="empty">Koi discount nahi diya gaya.</div></div>';
+  let html = '';
+
+  // Summary stats
+  html += '<div class="stat-grid">';
+  html += statCard('red', '🏷️ Total Discounts', d.totalDisc);
+  html += statCard('blue', 'Discount Entries', d.discEntries.length, true);
+  html += statCard('yellow', 'Avg Discount', d.discEntries.length ? Math.round(d.totalDisc / d.discEntries.length) : 0);
+  let avgPct = 0;
+  if (d.discEntries.length) {
+    let totalSub = d.discEntries.reduce((s, x) => s + (x.subtotal || 0), 0);
+    avgPct = totalSub > 0 ? Math.round(d.totalDisc / totalSub * 100) : 0;
+  }
+  html += statCard('purple', 'Avg Disc %', avgPct + '%', true);
+  html += '</div>';
+
+  // Discount by Doctor breakdown
+  let docList = Object.entries(d.discByDoctor).sort((a, b) => b[1].totalDisc - a[1].totalDisc);
+  if (docList.length) {
+    html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">👨‍⚕️ Discounts by Doctor</h3>';
+    html += '<div style="overflow-x:auto"><table style="font-size:11px;width:100%;border-collapse:collapse"><thead><tr style="background:#f5f5f5">' +
+      '<th style="padding:5px 8px;text-align:left">Doctor</th>' +
+      '<th style="padding:5px 8px;text-align:right">Entries</th>' +
+      '<th style="padding:5px 8px;text-align:right">Total Discount</th>' +
+      '<th style="padding:5px 8px;text-align:right">Revenue</th>' +
+      '<th style="padding:5px 8px;text-align:right">Disc %</th>' +
+      '</tr></thead><tbody>';
+    docList.forEach(([name, dd]) => {
+      let pct = dd.revenue > 0 ? Math.round(dd.totalDisc / (dd.revenue + dd.totalDisc) * 100) : 0;
+      html += '<tr>' +
+        '<td style="padding:4px 8px;font-weight:600">' + name + '</td>' +
+        '<td style="padding:4px 8px;text-align:right">' + dd.count + '</td>' +
+        '<td style="padding:4px 8px;text-align:right;color:#c44536;font-weight:600">₹' + dd.totalDisc.toLocaleString('en-IN') + '</td>' +
+        '<td style="padding:4px 8px;text-align:right">₹' + dd.revenue.toLocaleString('en-IN') + '</td>' +
+        '<td style="padding:4px 8px;text-align:right;color:#5a3c88">' + pct + '%</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  // Discount by Date
+  let dateList = Object.entries(d.discByDate).sort((a, b) => a[0].localeCompare(b[0]));
+  if (dateList.length > 1) {
+    html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📅 Discounts by Date</h3>';
+    html += '<div style="overflow-x:auto"><table style="font-size:11px;width:100%;border-collapse:collapse"><thead><tr style="background:#f5f5f5">' +
+      '<th style="padding:5px 8px;text-align:left">Date</th>' +
+      '<th style="padding:5px 8px;text-align:right">Entries</th>' +
+      '<th style="padding:5px 8px;text-align:right">Discount Given</th>' +
+      '</tr></thead><tbody>';
+    dateList.forEach(([dt, dd]) => {
+      html += '<tr>' +
+        '<td style="padding:4px 8px">' + dt + '</td>' +
+        '<td style="padding:4px 8px;text-align:right">' + dd.count + '</td>' +
+        '<td style="padding:4px 8px;text-align:right;color:#c44536;font-weight:600">₹' + dd.totalDisc.toLocaleString('en-IN') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  // Full discount entries table
+  html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📋 All Discount Entries (' + d.discEntries.length + ')</h3>';
+  html += '<div style="overflow-x:auto"><table style="font-size:11px;width:100%;border-collapse:collapse"><thead><tr style="background:#f5f5f5">' +
+    '<th style="padding:5px 8px;text-align:left">Date</th>' +
+    '<th style="padding:5px 8px;text-align:left">Patient</th>' +
+    '<th style="padding:5px 8px;text-align:left">Doctor</th>' +
+    '<th style="padding:5px 8px;text-align:left">Tests</th>' +
+    '<th style="padding:5px 8px;text-align:right">Subtotal</th>' +
+    '<th style="padding:5px 8px;text-align:right">Discount</th>' +
+    '<th style="padding:5px 8px;text-align:right">Final</th>' +
+    '<th style="padding:5px 8px;text-align:left">Mode</th>' +
+    '</tr></thead><tbody>';
+  d.discEntries.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name)).forEach(de => {
+    let pct = de.subtotal > 0 ? Math.round(de.discount / de.subtotal * 100) : 0;
+    html += '<tr>' +
+      '<td style="padding:4px 8px">' + de.date + '</td>' +
+      '<td style="padding:4px 8px"><b>' + de.name + '</b></td>' +
+      '<td style="padding:4px 8px;font-size:10px;color:#555">' + de.doctorName + '</td>' +
+      '<td style="padding:4px 8px;font-size:10px;color:#777;max-width:200px">' + de.tests + '</td>' +
+      '<td style="padding:4px 8px;text-align:right">₹' + de.subtotal + '</td>' +
+      '<td style="padding:4px 8px;text-align:right;color:#c44536;font-weight:700">₹' + de.discount + ' <span style="font-weight:400;color:#999">(' + pct + '%)</span></td>' +
+      '<td style="padding:4px 8px;text-align:right">₹' + de.total + '</td>' +
+      '<td style="padding:4px 8px;font-size:10px">' + de.paymentMode + '</td>' +
+    '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+
   return html;
 }
 

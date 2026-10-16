@@ -29,8 +29,9 @@ function generateHisab() {
   let rows = filtered.map((e, i) => {
     let rawDocS = 0, rawLabS = 0;
     e.tests.forEach(t => { rawDocS += (t.docShare || 0); rawLabS += (t.labShare || 0); });
-    // Original total = what tests cost minus discount (extra is excluded from hisab)
-    let origTotal = (e.total || 0) - (e.extra || 0);
+    // Original total = what tests cost minus discount
+    // Extra is included ONLY if extraInHisab flag is checked for this patient
+    let origTotal = e.extraInHisab ? (e.total || 0) : ((e.total || 0) - (e.extra || 0));
     // Scale shares down by discount factor — each proportionally reduced
     let origSubtotal = e.subtotal || (rawDocS + rawLabS);
     let docS = rawDocS, labS = rawLabS;
