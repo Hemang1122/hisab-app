@@ -221,17 +221,15 @@ function clearRegSelection() {
 }
 
 function printRegister() {
-  // Get current filter info for cover page
   let payFilter = document.getElementById('regPayFilter') ? document.getElementById('regPayFilter').value : '';
   let modeFilter = document.getElementById('regModeFilter') ? document.getElementById('regModeFilter').value : '';
   let collFilter = document.getElementById('regCollFilter') ? document.getElementById('regCollFilter').value : '';
   let docFilter = document.getElementById('regDocFilter').value;
   let search = (document.getElementById('regSearch').value || '').trim();
 
-  // Build filter description
   let filterParts = [];
   if (payFilter) {
-    let payLabels = { paid: '✅ Paid', balance: '💰 Balance', hold: '⏸️ Hold', cashless: '💳 Cashless', nocut: '🆓 No Cut', hospital: '🏥 Hospital' };
+    let payLabels = { paid: 'Paid', balance: 'Balance', hold: 'Hold', cashless: 'Cashless', nocut: 'No Cut', hospital: 'Hospital' };
     filterParts.push(payLabels[payFilter] || payFilter);
   }
   if (modeFilter) filterParts.push('Mode: ' + modeFilter);
@@ -246,71 +244,31 @@ function printRegister() {
   if (search) filterParts.push('Search: "' + search + '"');
   let filterLabel = filterParts.length ? filterParts.join(' · ') : 'All Entries';
 
-  // Date info
   let dateLabel = '';
   if (regDateMode === 'day') {
-    let date = getDateFromPicker('reg');
-    dateLabel = formatDateInv(date);
+    dateLabel = formatDateInv(getDateFromPicker('reg'));
   } else {
-    let from = document.getElementById('regFromDate').value;
-    let to = document.getElementById('regToDate').value;
-    dateLabel = formatDateInv(from) + ' to ' + formatDateInv(to);
+    dateLabel = formatDateInv(document.getElementById('regFromDate').value) + ' — ' + formatDateInv(document.getElementById('regToDate').value);
   }
 
-  // Get the register table + summary
   let summaryHtml = document.getElementById('regSummaryBar').innerHTML;
   let tableHtml = document.getElementById('registerList').innerHTML;
+  let genDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  // Build cover page
-  let cover = '<div class="reg-print-cover">' +
-    '<div class="cover-logo">श्री</div>' +
-    '<h1>Shree Balaji Clinical Laboratory</h1>' +
-    '<h2>Pathology & Diagnostic Services</h2>' +
-    '<hr style="width:200px;border:1px solid #1565c0;margin:20px auto">' +
-    '<div style="font-size:24px;font-weight:700;color:#1565c0;margin:20px 0">📋 Register Report</div>' +
-    '<div class="cover-meta"><b>Period:</b> ' + dateLabel + '</div>' +
-    '<div class="cover-meta"><b>Filter:</b> ' + filterLabel + '</div>' +
-    '<div class="cover-meta"><b>Generated:</b> ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</div>' +
-    '</div>';
+  let bodyHtml = '';
+  if (summaryHtml) bodyHtml += '<div style="margin-bottom:12px">' + summaryHtml + '</div>';
+  bodyHtml += tableHtml;
 
-  let printWin = window.open('', '_blank');
-  printWin.document.write('<!DOCTYPE html><html><head><title>Register Report — ' + filterLabel + '</title>');
-  printWin.document.write('<style>');
-  printWin.document.write('body { font-family: -apple-system, system-ui, sans-serif; color:#222; margin:0; padding:0; }');
-  printWin.document.write('.reg-print-cover { page-break-after:always; text-align:center; padding:80px 40px; min-height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; }');
-  printWin.document.write('.reg-print-cover h1 { font-size:28px; color:#1565c0; margin:8px 0; }');
-  printWin.document.write('.reg-print-cover h2 { font-size:18px; color:#555; font-weight:400; margin:0 0 20px; }');
-  printWin.document.write('.cover-logo { font-size:48px; color:#1b8a6b; margin-bottom:10px; }');
-  printWin.document.write('.cover-meta { font-size:14px; color:#555; margin:6px 0; }');
-  printWin.document.write('.content-page { padding:20px 30px; }');
-  printWin.document.write('.content-page h3 { font-size:14px; color:#1565c0; margin:0 0 10px; }');
-  printWin.document.write('table { width:100%; border-collapse:collapse; font-size:10px; }');
-  printWin.document.write('th, td { padding:4px 6px; border:1px solid #ddd; text-align:left; }');
-  printWin.document.write('th { background:#f5f5f5; font-weight:600; }');
-  printWin.document.write('.total-bar { display:flex; gap:16px; padding:8px 12px; background:#f5f5f5; border-radius:6px; font-size:12px; margin-top:8px; }');
-  printWin.document.write('.badge, .badge-green, .badge-red, .inv-status-hold { font-size:9px; padding:2px 6px; border-radius:4px; }');
-  printWin.document.write('.badge-green { background:#e8f5e9; color:#2e7d32; }');
-  printWin.document.write('.badge-red { background:#fbe9e7; color:#c62828; }');
-  printWin.document.write('.inv-status-hold { background:#fff3e0; color:#e65100; }');
-  printWin.document.write('.reg-chip { font-size:10px; padding:3px 8px; border-radius:12px; display:inline-block; margin:2px; }');
-  printWin.document.write('.reg-chip-green { background:#e8f5e9; color:#2e7d32; }');
-  printWin.document.write('.reg-chip-red { background:#fbe9e7; color:#c62828; }');
-  printWin.document.write('.reg-chip-orange { background:#fff3e0; color:#e65100; }');
-  printWin.document.write('.reg-chip-teal { background:#e0f2f1; color:#00695c; }');
-  printWin.document.write('.reg-chip-purple { background:#f3e5f5; color:#6a1b9a; }');
-  printWin.document.write('.reg-chip-blue { background:#e3f2fd; color:#1565c0; }');
-  printWin.document.write('.reg-chip-gray { background:#f5f5f5; color:#555; }');
-  printWin.document.write('.no-print, .btn, input[type="checkbox"] { display:none !important; }');
-  printWin.document.write('@media print { .reg-print-cover { page-break-after:always; } table { font-size:9px; } }');
-  printWin.document.write('</style></head><body>');
-  printWin.document.write(cover);
-  printWin.document.write('<div class="content-page">');
-  printWin.document.write('<h3>📋 Register — ' + filterLabel + ' — ' + dateLabel + '</h3>');
-  if (summaryHtml) printWin.document.write('<div style="margin-bottom:12px">' + summaryHtml + '</div>');
-  printWin.document.write(tableHtml);
-  printWin.document.write('</div></body></html>');
-  printWin.document.close();
-  setTimeout(() => { printWin.print(); }, 300);
+  openPrintWindow(
+    'Register — ' + filterLabel,
+    '📋 REGISTER REPORT',
+    [
+      '<b>Period:</b> ' + dateLabel,
+      '<b>Filter:</b> ' + filterLabel,
+      '<b>Generated:</b> ' + genDate
+    ],
+    bodyHtml
+  );
 }
 
 function bulkDeleteEntries() {
