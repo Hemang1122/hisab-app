@@ -118,8 +118,67 @@ function getPrintStyles() {
     .section-title { font-size: 14px; font-weight: 700; color: #e65100; margin: 12px 0 6px; border-bottom: 1px solid #ffe082; padding-bottom: 4px; }
     .no-print, .btn, input[type="checkbox"], button { display: none !important; }
 
+    /* ===== COVER PAGE ===== */
+    .cover-page {
+      page-break-after: always;
+      min-height: 95vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 40px;
+      background: #fff;
+    }
+    .cover-page .cover-logo {
+      font-size: 64px;
+      color: #f9a825;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #f9a825 0%, #ff8f00 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .cover-page h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #e65100;
+      margin: 0 0 4px;
+    }
+    .cover-page .cover-sub {
+      font-size: 16px;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    .cover-page .cover-divider {
+      width: 180px;
+      height: 3px;
+      background: linear-gradient(90deg, #f9a825, #ff8f00);
+      border: none;
+      margin: 0 auto 30px;
+      border-radius: 2px;
+    }
+    .cover-page .cover-report-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #1565c0;
+      margin-bottom: 24px;
+    }
+    .cover-page .cover-info {
+      font-size: 14px;
+      color: #555;
+      line-height: 2;
+    }
+    .cover-page .cover-info b { color: #333; }
+    .cover-page .cover-address {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #999;
+      line-height: 1.6;
+    }
+
     @media print {
       .report-footer { position: fixed; bottom: 0; }
+      .cover-page { page-break-after: always; }
       @page { margin: 8mm 6mm 14mm 6mm; }
     }
   `;
@@ -157,6 +216,22 @@ function getReportFooter() {
     '</div>';
 }
 
+function getCoverPage(reportType, metaLines) {
+  let infoHtml = metaLines.map(l => '<div>' + l + '</div>').join('');
+  return '<div class="cover-page">' +
+    '<div class="cover-logo">श्री</div>' +
+    '<h1>Shree Balaji Clinical Laboratory</h1>' +
+    '<div class="cover-sub">Pathology & Diagnostic Services</div>' +
+    '<div class="cover-divider"></div>' +
+    '<div class="cover-report-title">' + reportType + '</div>' +
+    '<div class="cover-info">' + infoHtml + '</div>' +
+    '<div class="cover-address">' +
+      'Shop No.39, Gagan Solitaire Building, Viva Janjld Complex, Manvelpada<br>' +
+      'Virar (East), Maharashtra 401305 · Ph: +91 97664 94833' +
+    '</div>' +
+  '</div>';
+}
+
 function openPrintWindow(title, reportType, metaLines, contentHtml) {
   let printWin = window.open('', '_blank');
   printWin.document.write('<!DOCTYPE html><html><head>');
@@ -164,6 +239,9 @@ function openPrintWindow(title, reportType, metaLines, contentHtml) {
   printWin.document.write('<title>' + title + ' — SBCL</title>');
   printWin.document.write('<style>' + getPrintStyles() + '</style>');
   printWin.document.write('</head><body>');
+  // Page 1: Cover page
+  printWin.document.write(getCoverPage(reportType, metaLines));
+  // Page 2+: Letterhead + content
   printWin.document.write(getReportHeader());
   printWin.document.write(getReportTitleBar(reportType, metaLines));
   printWin.document.write('<div class="content-area">' + contentHtml + '</div>');
