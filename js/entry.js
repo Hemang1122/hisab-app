@@ -68,6 +68,42 @@ function resetPayModeSplits() {
   document.getElementById('ePayModeAmt').value = '';
 }
 
+function onHoldReasonChange() {
+  let anyChecked = document.getElementById('holdPrice').checked ||
+    document.getElementById('holdCollector').checked ||
+    document.getElementById('holdPayment').checked ||
+    document.getElementById('holdTest').checked;
+  if (anyChecked) {
+    document.getElementById('ePayStatus').value = 'hold';
+    togglePayFields();
+  }
+}
+
+function getHoldReasons() {
+  let reasons = [];
+  if (document.getElementById('holdPrice').checked) reasons.push('price');
+  if (document.getElementById('holdCollector').checked) reasons.push('collector');
+  if (document.getElementById('holdPayment').checked) reasons.push('payment');
+  if (document.getElementById('holdTest').checked) reasons.push('test');
+  return reasons;
+}
+
+function resetHoldReasons() {
+  document.getElementById('holdPrice').checked = false;
+  document.getElementById('holdCollector').checked = false;
+  document.getElementById('holdPayment').checked = false;
+  document.getElementById('holdTest').checked = false;
+}
+
+function restoreHoldReasons(reasons) {
+  resetHoldReasons();
+  if (!reasons || !reasons.length) return;
+  reasons.forEach(r => {
+    let el = document.getElementById('hold' + r.charAt(0).toUpperCase() + r.slice(1));
+    if (el) el.checked = true;
+  });
+}
+
 function togglePayFields() {
   let status = document.getElementById('ePayStatus').value;
   let paidInput = document.getElementById('ePaid');
@@ -468,6 +504,7 @@ function saveEntry() {
       cashless: payInfo.cashless || false,
       noCut: payInfo.noCut || false,
       hold: payInfo.hold || false,
+      holdReasons: payInfo.hold ? getHoldReasons() : [],
       paymentMode: getPayModeSplitsData().paymentMode,
       paymentModes: getPayModeSplitsData().paymentModes,
       collectorId: document.getElementById('eCollector').value,
@@ -496,6 +533,7 @@ function saveEntry() {
       cashless: payInfo.cashless || false,
       noCut: payInfo.noCut || false,
       hold: payInfo.hold || false,
+      holdReasons: payInfo.hold ? getHoldReasons() : [],
       paymentMode: getPayModeSplitsData().paymentMode,
       paymentModes: getPayModeSplitsData().paymentModes,
       collectorId: document.getElementById('eCollector').value,
@@ -515,6 +553,7 @@ function saveEntry() {
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
   resetPayModeSplits();
+  resetHoldReasons();
   togglePayFields();
   document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
   calcEntry();
@@ -584,6 +623,9 @@ function editEntry(id) {
     }
     togglePayFields();
 
+    // Hold reasons
+    restoreHoldReasons(e.holdReasons || []);
+
     // Payment mode splits
     if (e.paymentModes && e.paymentModes.length) {
       payModeSplits = JSON.parse(JSON.stringify(e.paymentModes));
@@ -619,6 +661,7 @@ function cancelEditEntry() {
   document.getElementById('ePaid').value = '';
   document.getElementById('ePayStatus').value = 'paid';
   resetPayModeSplits();
+  resetHoldReasons();
   togglePayFields();
   document.querySelectorAll('.test-cb').forEach(cb => cb.checked = false);
   calcEntry();

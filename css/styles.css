@@ -617,6 +617,24 @@ hr { border:none; border-top:1px solid var(--n150); margin:14px 0; }
 .reg-chip-gray { background:#f5f5f5; color:#555; cursor:default; }
 .reg-chip-gray:hover { opacity:1; }
 
+/* Hold reason labels */
+.hold-reason-label {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:12px; cursor:pointer; padding:3px 8px;
+  background:#fff; border-radius:6px; border:1px solid #ffe082;
+}
+.hold-reason-label input[type="checkbox"] { accent-color:#e65100; }
+
+/* Revenue print cover page */
+.rev-print-cover {
+  page-break-after:always; text-align:center; padding:60px 40px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh;
+}
+.rev-print-cover h1 { font-size:28px; color:#1565c0; margin-bottom:8px; }
+.rev-print-cover h2 { font-size:20px; color:#333; font-weight:400; margin-bottom:30px; }
+.rev-print-cover .cover-meta { font-size:14px; color:#555; margin:6px 0; }
+.rev-print-cover .cover-logo { font-size:36px; margin-bottom:20px; color:var(--brand); }
+
 /* Payment mode split chips */
 .pay-split-chip {
   display:inline-flex; align-items:center; gap:2px;

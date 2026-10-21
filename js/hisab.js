@@ -188,6 +188,40 @@ function generateHisab() {
   html += '</div>';
   html += '</div>';
 
+  // === ON HOLD PATIENTS (show first so staff fills them) ===
+  let holdPatients = filtered.filter(e => e.hold);
+  if (holdPatients.length > 0) {
+    html += '<div style="background:#fff3e0;border:2px solid #ff9800;border-radius:8px;padding:12px 14px;margin-bottom:14px">';
+    html += '<div style="font-size:14px;font-weight:700;color:#e65100;margin-bottom:8px">⏸️ ON HOLD — ' + holdPatients.length + ' Patient' + (holdPatients.length > 1 ? 's' : '') + ' (Pehle ye bharo)</div>';
+    html += '<table style="width:100%;font-size:11px;border-collapse:collapse"><thead><tr style="background:#ffe0b2">' +
+      '<th style="padding:5px 8px;text-align:left;border:1px solid #ffcc80">#</th>' +
+      '<th style="padding:5px 8px;text-align:left;border:1px solid #ffcc80">Date</th>' +
+      '<th style="padding:5px 8px;text-align:left;border:1px solid #ffcc80">Patient</th>' +
+      '<th style="padding:5px 8px;text-align:left;border:1px solid #ffcc80">Tests</th>' +
+      '<th style="padding:5px 8px;text-align:left;border:1px solid #ffcc80">Kya pata nahi</th>' +
+      '<th style="padding:5px 8px;text-align:center;border:1px solid #ffcc80">Fill karo ✏️</th>' +
+      '</tr></thead><tbody>';
+    holdPatients.forEach((e, hi) => {
+      let reasons = (e.holdReasons || []).map(r => {
+        if (r === 'price') return '💰 Price';
+        if (r === 'collector') return '🚚 Collector';
+        if (r === 'payment') return '💳 Payment';
+        if (r === 'test') return '🧪 Test';
+        return r;
+      }).join(', ') || 'Not specified';
+      let tnames = e.tests.map(t => t.name).join(', ');
+      html += '<tr>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80">' + (hi + 1) + '</td>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80">' + formatDateInv(e.date) + '</td>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80;font-weight:600">' + e.name + '</td>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80;font-size:10px">' + tnames + '</td>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80;color:#e65100">' + reasons + '</td>' +
+        '<td style="padding:4px 8px;border:1px solid #ffcc80;text-align:center">___________</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
   // === TABLE ===
   html += '<div class="inv-table-wrap">';
   if (isSelf) {

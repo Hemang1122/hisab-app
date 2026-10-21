@@ -251,6 +251,75 @@ async function showRevenue() {
   renderRevenueSection();
 }
 
+function getRevSectionTitle(section) {
+  let titles = {
+    overview: '📊 Overview Report',
+    daily: '📅 Daily Report',
+    doctor: '👨‍⚕️ Doctor Breakdown Report',
+    collector: '🚚 Collection Boys Report',
+    operator: '👤 Operator Work Report',
+    payment: '💳 Payment Modes Report',
+    cashless: '💳 Cashless Report',
+    discounts: '🏷️ Discounts Report',
+    extras: '💵 Extras Report',
+    materials: '🧪 Materials Report',
+    entries: '📋 All Entries Report'
+  };
+  return titles[section] || 'Revenue Report';
+}
+
+function printRevSection() {
+  let d = lastRevComputed;
+  if (!d) return alert('Pehle data load karo!');
+  let from = document.getElementById('revFrom').value;
+  let to = document.getElementById('revTo').value;
+  let sectionTitle = getRevSectionTitle(currentRevSection);
+
+  // Build cover page
+  let cover = '<div class="rev-print-cover">' +
+    '<div class="cover-logo">श्री</div>' +
+    '<h1>Shree Balaji Clinical Laboratory</h1>' +
+    '<h2>Pathology & Diagnostic Services</h2>' +
+    '<hr style="width:200px;border:1px solid #1565c0;margin:20px auto">' +
+    '<div style="font-size:24px;font-weight:700;color:#1565c0;margin:20px 0">' + sectionTitle + '</div>' +
+    '<div class="cover-meta"><b>Period:</b> ' + formatDateInv(from) + ' to ' + formatDateInv(to) + '</div>' +
+    '<div class="cover-meta"><b>Generated:</b> ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + '</div>' +
+    '<div class="cover-meta"><b>Total Entries:</b> ' + d.totalEntries + ' · <b>Revenue:</b> ₹' + d.totalRevenue.toLocaleString('en-IN') + '</div>' +
+    '</div>';
+
+  // Get the current section content
+  let content = document.getElementById('revenueResult').innerHTML;
+
+  // Create print container
+  let printWin = window.open('', '_blank');
+  printWin.document.write('<!DOCTYPE html><html><head><title>' + sectionTitle + '</title>');
+  printWin.document.write('<style>');
+  printWin.document.write('body { font-family: -apple-system, system-ui, sans-serif; color:#222; margin:0; padding:0; }');
+  printWin.document.write('.rev-print-cover { page-break-after:always; text-align:center; padding:80px 40px; min-height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; }');
+  printWin.document.write('.rev-print-cover h1 { font-size:28px; color:#1565c0; margin:8px 0; }');
+  printWin.document.write('.rev-print-cover h2 { font-size:18px; color:#555; font-weight:400; margin:0 0 20px; }');
+  printWin.document.write('.cover-logo { font-size:48px; color:#1b8a6b; margin-bottom:10px; }');
+  printWin.document.write('.cover-meta { font-size:14px; color:#555; margin:6px 0; }');
+  printWin.document.write('.content-page { padding:20px 30px; }');
+  printWin.document.write('table { width:100%; border-collapse:collapse; font-size:11px; }');
+  printWin.document.write('th, td { padding:5px 8px; border:1px solid #ddd; text-align:left; }');
+  printWin.document.write('th { background:#f5f5f5; font-weight:600; }');
+  printWin.document.write('.card { background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:12px; }');
+  printWin.document.write('.stat-grid { display:flex; flex-wrap:wrap; gap:10px; }');
+  printWin.document.write('.stat-card { padding:12px; border-radius:6px; min-width:120px; flex:1; background:#f8f9fa; }');
+  printWin.document.write('.stat-label { font-size:11px; color:#666; margin-bottom:2px; }');
+  printWin.document.write('.stat-value { font-size:18px; font-weight:700; }');
+  printWin.document.write('h3, h4 { margin:8px 0; }');
+  printWin.document.write('.no-print { display:none !important; }');
+  printWin.document.write('@media print { .rev-print-cover { page-break-after:always; } }');
+  printWin.document.write('</style></head><body>');
+  printWin.document.write(cover);
+  printWin.document.write('<div class="content-page">' + content + '</div>');
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  setTimeout(() => { printWin.print(); }, 300);
+}
+
 function renderRevenueSection() {
   let d = lastRevComputed;
   if (!d) return;
