@@ -160,6 +160,8 @@ body::after {
 .db-offline::before { background:#ef4444; box-shadow:0 0 6px rgba(239,68,68,.5); }
 .db-loading { background:rgba(245,158,11,.15); color:#f59e0b; }
 .db-loading::before { background:#f59e0b; animation:pulseGlow 1.4s infinite; }
+.db-error { background:rgba(234,88,12,.15); color:#ea580c; }
+.db-error::before { background:#ea580c; box-shadow:0 0 6px rgba(234,88,12,.5); animation:pulseGlow 1.4s infinite; }
 @keyframes pulseGlow {
   0%,100% { opacity:1; box-shadow:0 0 4px rgba(245,158,11,.4); }
   50% { opacity:.3; box-shadow:0 0 8px rgba(245,158,11,.6); }

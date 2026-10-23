@@ -376,8 +376,12 @@ let pendingOps = LS.get('pendingOps', []);  // [{action:'save'|'delete', table, 
 let deletedEntryIds = LS.get('deletedEntryIds', []);
 // Sync lock — prevents overlapping syncs and tracks entries modified during sync
 let isSyncing = false;
+let syncRequested = false; // true if sync requested while one is in-flight → triggers follow-up
 let dirtyEntryIds = new Set(); // entry IDs modified while sync is in-flight
+let dirtyDeleteIds = new Set(); // entry IDs deleted while sync is in-flight
 let lastSyncTime = 0; // timestamp of last successful sync
+let localSaveFailed = false; // true if last saveLocal() failed (quota etc.)
+let lastSyncError = false; // true if last sync attempt threw
 
 function addPendingOp(action, table, id, data) {
   // Remove any existing op for same table+id to avoid duplicates
@@ -392,17 +396,33 @@ function removePendingOp(table, id) {
 }
 
 function trackDeletedEntry(id) {
-  if (!deletedEntryIds.includes(id)) {
-    deletedEntryIds.push(id);
-    // Keep max 2000 deleted IDs to prevent unbounded growth
-    if (deletedEntryIds.length > 2000) deletedEntryIds = deletedEntryIds.slice(-2000);
-    LS.set('deletedEntryIds', deletedEntryIds);
-  }
+  if (isDeletedEntry(id)) return;
+  deletedEntryIds.push({ id: id, ts: Date.now() });
+  // Track during in-flight sync so merge doesn't resurrect
+  if (isSyncing) dirtyDeleteIds.add(id);
+  // Evict entries deleted >30 days ago
+  let thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  deletedEntryIds = deletedEntryIds.filter(function(x) {
+    if (typeof x === 'string') return true; // legacy format — keep (no age info)
+    return x.ts > thirtyDaysAgo;
+  });
+  // Hard cap as final safety net
+  if (deletedEntryIds.length > 5000) deletedEntryIds = deletedEntryIds.slice(-5000);
+  LS.set('deletedEntryIds', deletedEntryIds);
 }
 
 function untrackDeletedEntry(id) {
-  deletedEntryIds = deletedEntryIds.filter(x => x !== id);
+  deletedEntryIds = deletedEntryIds.filter(function(x) {
+    return (typeof x === 'string' ? x : x.id) !== id;
+  });
   LS.set('deletedEntryIds', deletedEntryIds);
+}
+
+// Check if an entry ID is in the deleted list (handles legacy string + new {id,ts} format)
+function isDeletedEntry(id) {
+  return deletedEntryIds.some(function(x) {
+    return (typeof x === 'string' ? x : x.id) === id;
+  });
 }
 
 // ========== SEED DATA (runs once if no doctors exist) ==========
@@ -753,11 +773,21 @@ function migrateData() {
 }
 
 function saveLocal() {
-  LS.set('rateLists', rateLists);
-  LS.set('doctors', doctors);
-  LS.set('collectors', collectors);
-  LS.set('entries', entries);
-  LS.set('settings', settings);
+  var ok = true;
+  ok = LS.set('rateLists', rateLists) && ok;
+  ok = LS.set('doctors', doctors) && ok;
+  ok = LS.set('collectors', collectors) && ok;
+  ok = LS.set('entries', entries) && ok;
+  ok = LS.set('settings', settings) && ok;
+  if (!ok && !localSaveFailed) {
+    localSaveFailed = true;
+    updateSyncStatus();
+    if (typeof toast === 'function') toast('⚠️ Local storage error — changes may not be saved!', 'error');
+  } else if (ok && localSaveFailed) {
+    localSaveFailed = false;
+    updateSyncStatus();
+  }
+  return ok;
 }
 
 // ========== SUPABASE ==========
@@ -794,9 +824,17 @@ function initSupabase() {
 
 async function loadAllFromSupabase() {
   if (!dbReady || !sb) return;
-  if (isSyncing) { console.log('⏳ Sync already in progress, skipping'); return; }
+  if (isSyncing) {
+    syncRequested = true;
+    console.log('⏳ Sync already in progress, follow-up queued');
+    return;
+  }
   isSyncing = true;
-  dirtyEntryIds.clear();
+  // Don't clear dirtyEntryIds here — entries dirtied between the sync lock
+  // being released and the next sync starting are already in the entries array
+  // and will be picked up by localMap. Only clear AFTER successful reconciliation.
+  dirtyEntryIds = new Set();
+  dirtyDeleteIds = new Set();
   try {
     setDbStatus('Syncing...', 'db-loading');
 
@@ -887,28 +925,38 @@ async function loadAllFromSupabase() {
       let merged = [];
       let localWins = 0, cloudWins = 0, localOnlyCount = 0;
 
-      // Filter out entries that were deleted locally
-      sbEntries = sbEntries.filter(e => {
-        if (deletedEntryIds.includes(e.id)) {
+      // Filter out entries that were deleted locally (handles legacy string + {id,ts} format)
+      sbEntries = sbEntries.filter(function(e) {
+        if (isDeletedEntry(e.id)) {
           sbDelete('entries', e.id);
           return false;
         }
         return true;
       });
 
-      // Process all Supabase entries
-      sbEntries.forEach(sbE => {
+      // Process all Supabase entries with deterministic timestamp comparison
+      sbEntries.forEach(function(sbE) {
         let localE = localMap.get(sbE.id);
         if (localE) {
           let sbMod = sbE.lastModified || 0;
           let localMod = localE.lastModified || 0;
           if (localMod > sbMod) {
+            // Local is strictly newer
             merged.push(localE);
             sbSave('entries', localE.id, localE);
             localWins++;
-          } else {
+          } else if (sbMod > localMod) {
+            // Cloud is strictly newer
             merged.push(sbE);
             cloudWins++;
+          } else {
+            // Equal timestamps (or both zero/missing) — keep local to avoid
+            // discarding unsynchronized changes. Stamp and push if both lack timestamps.
+            merged.push(localE);
+            if (localMod === 0) {
+              localE.lastModified = Date.now();
+              sbSave('entries', localE.id, localE);
+            }
           }
         } else {
           merged.push(sbE);
@@ -917,9 +965,9 @@ async function loadAllFromSupabase() {
       });
 
       // Add local-only entries (not in Supabase)
-      let sbIds = new Set(sbEntries.map(e => e.id));
-      entries.forEach(e => {
-        if (!sbIds.has(e.id) && !deletedEntryIds.includes(e.id)) {
+      let sbIds = new Set(sbEntries.map(function(e) { return e.id; }));
+      entries.forEach(function(e) {
+        if (!sbIds.has(e.id) && !isDeletedEntry(e.id)) {
           merged.push(e);
           sbSave('entries', e.id, e);
           localOnlyCount++;
@@ -929,15 +977,22 @@ async function loadAllFromSupabase() {
       // CRITICAL: Re-apply any entries modified DURING this async sync
       // Their edits would otherwise be lost when we assign entries = merged
       if (dirtyEntryIds.size > 0) {
-        dirtyEntryIds.forEach(dirtyId => {
-          let freshLocal = entries.find(e => e.id === dirtyId);
+        dirtyEntryIds.forEach(function(dirtyId) {
+          let freshLocal = entries.find(function(e) { return e.id === dirtyId; });
           if (freshLocal) {
-            let idx = merged.findIndex(e => e.id === dirtyId);
+            let idx = merged.findIndex(function(e) { return e.id === dirtyId; });
             if (idx >= 0) merged[idx] = freshLocal;
             else merged.push(freshLocal);
           }
         });
         console.log('🛡️ Protected ' + dirtyEntryIds.size + ' entries modified during sync');
+      }
+
+      // CRITICAL: Remove entries deleted DURING this async sync
+      // Without this, the merge could resurrect entries the user just deleted
+      if (dirtyDeleteIds.size > 0) {
+        merged = merged.filter(function(e) { return !dirtyDeleteIds.has(e.id); });
+        console.log('🛡️ Honored ' + dirtyDeleteIds.size + ' deletions made during sync');
       }
 
       entries = merged;
@@ -970,6 +1025,7 @@ async function loadAllFromSupabase() {
     }
 
     lastSyncTime = Date.now();
+    lastSyncError = false;
     updateSyncStatus();
 
     // Refresh UI after sync
@@ -986,10 +1042,17 @@ async function loadAllFromSupabase() {
     }
   } catch (e) {
     console.error('Supabase load error:', e);
-    setDbStatus('Offline - Using Cache', 'db-offline');
+    lastSyncError = true;
+    updateSyncStatus();
   } finally {
     isSyncing = false;
-    dirtyEntryIds.clear();
+    dirtyEntryIds = new Set();
+    dirtyDeleteIds = new Set();
+    // If another sync was requested while this one was running, do a follow-up pass
+    if (syncRequested) {
+      syncRequested = false;
+      setTimeout(function() { loadAllFromSupabase(); }, 200);
+    }
   }
 }
 
@@ -1022,15 +1085,28 @@ async function sbDelete(table, id) {
   }
 }
 
-// Retry all pending operations
+// Retry all pending operations — uses fresh data from live arrays when available
 async function retryPendingOps() {
   if (!dbReady || !sb || !pendingOps.length) return;
   let ops = [...pendingOps]; // snapshot
   let retried = 0;
   for (let op of ops) {
     try {
-      if (op.action === 'save' && op.data) {
-        let clean = { ...op.data }; delete clean.id;
+      if (op.action === 'save') {
+        // Look up fresh data from live arrays instead of using stale op.data
+        let freshData = null;
+        if (op.table === 'entries') freshData = entries.find(function(e) { return e.id === op.id; });
+        else if (op.table === 'doctors') freshData = doctors.find(function(d) { return d.id === op.id; });
+        else if (op.table === 'rate_lists') freshData = rateLists.find(function(r) { return r.id === op.id; });
+        else if (op.table === 'collectors') freshData = collectors.find(function(c) { return c.id === op.id; });
+        let data = freshData || op.data;
+        if (!data) {
+          // Record no longer exists locally — remove the pending op
+          removePendingOp(op.table, op.id);
+          retried++;
+          continue;
+        }
+        let clean = { ...data }; delete clean.id;
         let { error } = await sb.from(op.table).upsert({ id: op.id, data: clean }, { onConflict: 'id' });
         if (!error) { removePendingOp(op.table, op.id); retried++; }
       } else if (op.action === 'delete') {
@@ -1072,11 +1148,12 @@ function saveEntry_db(entry) {
   saveLocal();
   // Track dirty entries during sync so they aren't overwritten by stale merge
   if (isSyncing) dirtyEntryIds.add(entry.id);
-  if (dbReady) {
+  if (dbReady && navigator.onLine) {
     sbSave('entries', entry.id, entry);
   } else {
-    // Offline — queue for retry
+    // Offline or not ready — queue for retry
     addPendingOp('save', 'entries', entry.id, entry);
+    updateSyncStatus();
   }
 }
 
@@ -1246,11 +1323,28 @@ async function fullResyncToCloud() {
 
 // ========== SYNC STATUS + ONLINE/OFFLINE + VISIBILITY RESYNC ==========
 function updateSyncStatus() {
-  let pending = pendingOps.length;
-  if (!dbReady) {
-    setDbStatus('Offline - Local Only', 'db-offline');
+  var pending = pendingOps.length;
+  if (localSaveFailed) {
+    setDbStatus('⚠️ Local storage error — changes may not be saved', 'db-error');
+  } else if (!dbReady || !navigator.onLine) {
+    if (pending > 0) {
+      setDbStatus('Offline — ' + pending + ' changes saved locally', 'db-offline');
+    } else {
+      setDbStatus('Offline — changes saved locally', 'db-offline');
+    }
+  } else if (isSyncing) {
+    setDbStatus('Syncing...', 'db-loading');
+  } else if (lastSyncError && pending > 0) {
+    setDbStatus('Sync error — ' + pending + ' changes pending', 'db-error');
   } else if (pending > 0) {
     setDbStatus('Online ✓ (' + pending + ' pending)', 'db-online');
+  } else if (lastSyncTime > 0) {
+    var ago = Math.round((Date.now() - lastSyncTime) / 60000);
+    if (ago < 1) {
+      setDbStatus('Online ✓', 'db-online');
+    } else {
+      setDbStatus('Online ✓ · Last synced ' + ago + ' min ago', 'db-online');
+    }
   } else {
     setDbStatus('Online ✓', 'db-online');
   }
@@ -1267,22 +1361,22 @@ document.addEventListener('visibilitychange', function() {
   }
 });
 
-// Online/offline detection
+// Online/offline detection — listeners registered once
 window.addEventListener('online', function() {
   console.log('🌐 Back online');
   if (dbReady) {
     updateSyncStatus();
     loadAllFromSupabase();
+    if (typeof toast === 'function') toast('🌐 Internet connected — syncing...');
   } else {
     // Try to reconnect Supabase
     initSupabase();
   }
-  if (typeof toast === 'function') toast('🌐 Internet connected — syncing...');
 });
 
 window.addEventListener('offline', function() {
   console.log('📡 Gone offline');
-  setDbStatus('📡 Offline', 'db-offline');
+  updateSyncStatus();
   if (typeof toast === 'function') toast('📡 Offline — changes saved locally');
 });
 
