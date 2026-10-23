@@ -858,6 +858,171 @@ function saveEntry_db(entry) {
   if (dbReady) sbSave('entries', entry.id, entry);
 }
 
+// ========== DATA RECOVERY ==========
+async function openRecoveryTool() {
+  let statusEl = document.getElementById('recoveryStatus');
+  let resultsEl = document.getElementById('recoveryResults');
+  statusEl.style.display = 'block';
+  resultsEl.style.display = 'none';
+  statusEl.innerHTML = '⏳ Scanning local & cloud data...';
+
+  let localCount = entries.length;
+  let localIds = new Set(entries.map(e => e.id));
+
+  // Fetch all from Supabase
+  let cloudEntries = [];
+  if (dbReady && sb) {
+    try {
+      let allData = [];
+      let page = 0, pageSize = 1000;
+      while (true) {
+        let { data, error } = await sb.from('entries').select('*').range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error || !data || !data.length) break;
+        allData = allData.concat(data);
+        if (data.length < pageSize) break;
+        page++;
+      }
+      cloudEntries = allData.map(e => ({ id: e.id, ...e.data }));
+    } catch (e) {
+      statusEl.innerHTML = '❌ Cloud connect fail: ' + e.message;
+      return;
+    }
+  } else {
+    statusEl.innerHTML = '⚠️ Cloud not connected. Showing local data only.';
+  }
+
+  let cloudIds = new Set(cloudEntries.map(e => e.id));
+  let localOnly = entries.filter(e => !cloudIds.has(e.id));
+  let cloudOnly = cloudEntries.filter(e => !localIds.has(e.id));
+  let bothCount = entries.filter(e => cloudIds.has(e.id)).length;
+
+  // Show status
+  statusEl.innerHTML =
+    '<b>📊 Scan Results:</b><br>' +
+    '• Local entries: <b>' + localCount + '</b><br>' +
+    '• Cloud entries: <b>' + cloudEntries.length + '</b><br>' +
+    '• Both local & cloud: <b style="color:#2e7d32">' + bothCount + '</b><br>' +
+    (localOnly.length ? '• <span style="color:#e65100"><b>' + localOnly.length + ' LOCAL ONLY</b> (not in cloud — at risk!)</span><br>' : '') +
+    (cloudOnly.length ? '• <span style="color:#1565c0"><b>' + cloudOnly.length + ' CLOUD ONLY</b> (missing from this browser!)</span><br>' : '') +
+    (!localOnly.length && !cloudOnly.length ? '• <span style="color:#2e7d32">✅ Sab sync hai — koi missing nahi!</span>' : '');
+
+  // Build results
+  resultsEl.style.display = 'block';
+  let html = '';
+
+  if (cloudOnly.length > 0) {
+    html += '<div style="margin-bottom:10px"><b style="color:#1565c0">☁️ ' + cloudOnly.length + ' entries cloud mein hain par local mein nahi:</b></div>';
+    html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:8px">';
+    html += '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+    html += '<tr style="background:#e3f2fd"><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px">Doctor</th><th style="padding:4px 6px">Total</th></tr>';
+    cloudOnly.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    cloudOnly.forEach(e => {
+      html += '<tr><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.date || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.name || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.doctorName || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">₹' + (e.total || 0) + '</td></tr>';
+    });
+    html += '</table></div>';
+    html += '<button class="btn btn-success btn-sm" onclick="recoverCloudToLocal()" style="margin-bottom:8px">✅ Recover ' + cloudOnly.length + ' entries to local</button>';
+  }
+
+  if (localOnly.length > 0) {
+    html += '<div style="margin-bottom:10px"><b style="color:#e65100">📱 ' + localOnly.length + ' entries local mein hain par cloud mein nahi:</b></div>';
+    html += '<div style="max-height:200px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:8px">';
+    html += '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+    html += '<tr style="background:#fff3e0"><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Name</th><th style="padding:4px 6px">Doctor</th><th style="padding:4px 6px">Total</th></tr>';
+    localOnly.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    localOnly.forEach(e => {
+      html += '<tr><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.date || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.name || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">' + (e.doctorName || '-') + '</td><td style="padding:3px 6px;border-top:1px solid #eee">₹' + (e.total || 0) + '</td></tr>';
+    });
+    html += '</table></div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="pushLocalToCloud()" style="margin-bottom:8px">☁️ Push ' + localOnly.length + ' entries to cloud</button>';
+  }
+
+  if (!cloudOnly.length && !localOnly.length) {
+    html += '<p style="color:#2e7d32;font-size:13px">✅ All entries are synced between local and cloud. No recovery needed!</p>';
+  }
+
+  // Always show full resync button
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee">' +
+    '<button class="btn btn-secondary btn-sm" onclick="fullResyncToCloud()" style="font-size:11px">🔄 Full Re-sync: Push ALL ' + localCount + ' local entries to cloud</button>' +
+    '</div>';
+
+  resultsEl.innerHTML = html;
+
+  // Store for recovery functions
+  window._recoveryCloudOnly = cloudOnly;
+  window._recoveryLocalOnly = localOnly;
+}
+
+async function recoverCloudToLocal() {
+  let cloudOnly = window._recoveryCloudOnly || [];
+  if (!cloudOnly.length) return alert('Nothing to recover!');
+
+  let before = entries.length;
+  let existingIds = new Set(entries.map(e => e.id));
+  let added = 0;
+  cloudOnly.forEach(e => {
+    if (!existingIds.has(e.id)) {
+      entries.push(e);
+      added++;
+    }
+  });
+
+  saveLocal();
+  if (typeof refreshSidebar === 'function') refreshSidebar();
+  if (typeof toast === 'function') toast('✅ ' + added + ' entries recovered!');
+  alert('✅ ' + added + ' entries wapas aa gaye!\n\nPehle: ' + before + ' entries\nAb: ' + entries.length + ' entries');
+
+  // Re-scan
+  openRecoveryTool();
+}
+
+async function pushLocalToCloud() {
+  let localOnly = window._recoveryLocalOnly || [];
+  if (!localOnly.length) return alert('Nothing to push!');
+  if (!dbReady || !sb) return alert('Cloud not connected!');
+
+  let ok = 0, fail = 0;
+  for (let e of localOnly) {
+    try {
+      let clean = { ...e }; delete clean.id;
+      let { error } = await sb.from('entries').upsert({ id: e.id, data: clean }, { onConflict: 'id' });
+      if (error) fail++; else ok++;
+    } catch (err) { fail++; }
+  }
+
+  if (typeof toast === 'function') toast('☁️ ' + ok + ' entries cloud mein push ho gaye!');
+  alert('☁️ ' + ok + ' entries cloud mein upload!\n' + (fail > 0 ? '⚠️ ' + fail + ' failed.' : ''));
+
+  // Re-scan
+  openRecoveryTool();
+}
+
+async function fullResyncToCloud() {
+  if (!entries.length) return alert('No entries!');
+  if (!dbReady || !sb) return alert('Cloud not connected!');
+  if (!confirm('⚠️ ALL ' + entries.length + ' entries cloud mein push honge.\n\nContinue?')) return;
+
+  let statusEl = document.getElementById('recoveryStatus');
+  statusEl.innerHTML = '⏳ Re-syncing ' + entries.length + ' entries...';
+
+  let ok = 0, fail = 0;
+  for (let e of entries) {
+    try {
+      let clean = { ...e }; delete clean.id;
+      let { error } = await sb.from('entries').upsert({ id: e.id, data: clean }, { onConflict: 'id' });
+      if (error) fail++; else ok++;
+    } catch (err) { fail++; }
+    if ((ok + fail) % 50 === 0) {
+      statusEl.innerHTML = '⏳ Progress: ' + (ok + fail) + '/' + entries.length + '...';
+    }
+  }
+
+  if (typeof toast === 'function') toast('🔄 Full sync done: ' + ok + ' ok');
+  alert('🔄 Full re-sync complete!\n✅ ' + ok + ' uploaded\n' + (fail > 0 ? '❌ ' + fail + ' failed' : ''));
+
+  // Re-scan
+  openRecoveryTool();
+}
+
 // ========== UTILITIES ==========
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function localDateStr(d) {
