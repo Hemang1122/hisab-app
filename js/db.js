@@ -374,6 +374,10 @@ let settings = LS.get('settings', { revPassword: 'Anita@1234' });
 let pendingOps = LS.get('pendingOps', []);  // [{action:'save'|'delete', table, id, data?, ts}]
 // Deleted entry IDs — prevents deleted entries from reappearing from Supabase
 let deletedEntryIds = LS.get('deletedEntryIds', []);
+// Sync lock — prevents overlapping syncs and tracks entries modified during sync
+let isSyncing = false;
+let dirtyEntryIds = new Set(); // entry IDs modified while sync is in-flight
+let lastSyncTime = 0; // timestamp of last successful sync
 
 function addPendingOp(action, table, id, data) {
   // Remove any existing op for same table+id to avoid duplicates
@@ -390,8 +394,8 @@ function removePendingOp(table, id) {
 function trackDeletedEntry(id) {
   if (!deletedEntryIds.includes(id)) {
     deletedEntryIds.push(id);
-    // Keep max 500 deleted IDs to prevent unbounded growth
-    if (deletedEntryIds.length > 500) deletedEntryIds = deletedEntryIds.slice(-500);
+    // Keep max 2000 deleted IDs to prevent unbounded growth
+    if (deletedEntryIds.length > 2000) deletedEntryIds = deletedEntryIds.slice(-2000);
     LS.set('deletedEntryIds', deletedEntryIds);
   }
 }
@@ -790,50 +794,95 @@ function initSupabase() {
 
 async function loadAllFromSupabase() {
   if (!dbReady || !sb) return;
+  if (isSyncing) { console.log('⏳ Sync already in progress, skipping'); return; }
+  isSyncing = true;
+  dirtyEntryIds.clear();
   try {
     setDbStatus('Syncing...', 'db-loading');
 
+    // --- SMART MERGE for rate_lists (with lastModified) ---
     let { data: rlData } = await sb.from('rate_lists').select('*');
     if (rlData && rlData.length) {
       let sbRL = rlData.map(r => ({ id: r.id, ...r.data }));
-      let sbRLIds = new Set(sbRL.map(r => r.id));
-      let localOnlyRL = rateLists.filter(r => !sbRLIds.has(r.id));
-      rateLists = sbRL;
-      if (localOnlyRL.length > 0) {
-        rateLists = rateLists.concat(localOnlyRL);
-        localOnlyRL.forEach(r => sbSave('rate_lists', r.id, r));
-      }
+      let localRLMap = new Map(rateLists.map(r => [r.id, r]));
+      let mergedRL = [];
+      sbRL.forEach(sbR => {
+        let localR = localRLMap.get(sbR.id);
+        if (localR) {
+          let sbMod = sbR.lastModified || 0;
+          let localMod = localR.lastModified || 0;
+          if (localMod > sbMod) {
+            mergedRL.push(localR);
+            sbSave('rate_lists', localR.id, localR);
+          } else {
+            mergedRL.push(sbR);
+          }
+          localRLMap.delete(sbR.id);
+        } else {
+          mergedRL.push(sbR);
+        }
+      });
+      // Add local-only rate lists
+      localRLMap.forEach(r => { mergedRL.push(r); sbSave('rate_lists', r.id, r); });
+      rateLists = mergedRL;
     }
 
+    // --- SMART MERGE for doctors (with lastModified) ---
     let { data: docData } = await sb.from('doctors').select('*');
     if (docData && docData.length) {
       let sbDocs = docData.map(d => ({ id: d.id, ...d.data }));
-      let sbDocIds = new Set(sbDocs.map(d => d.id));
-      let localOnlyDocs = doctors.filter(d => !sbDocIds.has(d.id));
-      doctors = sbDocs;
-      if (localOnlyDocs.length > 0) {
-        doctors = doctors.concat(localOnlyDocs);
-        localOnlyDocs.forEach(d => sbSave('doctors', d.id, d));
-      }
+      let localDocMap = new Map(doctors.map(d => [d.id, d]));
+      let mergedDocs = [];
+      sbDocs.forEach(sbD => {
+        let localD = localDocMap.get(sbD.id);
+        if (localD) {
+          let sbMod = sbD.lastModified || 0;
+          let localMod = localD.lastModified || 0;
+          if (localMod > sbMod) {
+            mergedDocs.push(localD);
+            sbSave('doctors', localD.id, localD);
+          } else {
+            mergedDocs.push(sbD);
+          }
+          localDocMap.delete(sbD.id);
+        } else {
+          mergedDocs.push(sbD);
+        }
+      });
+      localDocMap.forEach(d => { mergedDocs.push(d); sbSave('doctors', d.id, d); });
+      doctors = mergedDocs;
     }
 
+    // --- SMART MERGE for collectors (with lastModified) ---
     let { data: collData } = await sb.from('collectors').select('*');
     if (collData && collData.length) {
       let sbColls = collData.map(c => ({ id: c.id, ...c.data }));
-      let sbCollIds = new Set(sbColls.map(c => c.id));
-      let localOnlyColls = collectors.filter(c => !sbCollIds.has(c.id));
-      collectors = sbColls;
-      if (localOnlyColls.length > 0) {
-        collectors = collectors.concat(localOnlyColls);
-        localOnlyColls.forEach(c => sbSave('collectors', c.id, c));
-      }
+      let localCollMap = new Map(collectors.map(c => [c.id, c]));
+      let mergedColls = [];
+      sbColls.forEach(sbC => {
+        let localC = localCollMap.get(sbC.id);
+        if (localC) {
+          let sbMod = sbC.lastModified || 0;
+          let localMod = localC.lastModified || 0;
+          if (localMod > sbMod) {
+            mergedColls.push(localC);
+            sbSave('collectors', localC.id, localC);
+          } else {
+            mergedColls.push(sbC);
+          }
+          localCollMap.delete(sbC.id);
+        } else {
+          mergedColls.push(sbC);
+        }
+      });
+      localCollMap.forEach(c => { mergedColls.push(c); sbSave('collectors', c.id, c); });
+      collectors = mergedColls;
     }
 
+    // --- SMART MERGE for entries (with lastModified + dirty entry protection) ---
     let { data: entData } = await sb.from('entries').select('*');
     if (entData && entData.length) {
-      // SMART MERGE: compare lastModified timestamps, keep newer version
       let sbEntries = entData.map(e => ({ id: e.id, ...e.data }));
-      let sbMap = new Map(sbEntries.map(e => [e.id, e]));
       let localMap = new Map(entries.map(e => [e.id, e]));
       let merged = [];
       let localWins = 0, cloudWins = 0, localOnlyCount = 0;
@@ -841,7 +890,6 @@ async function loadAllFromSupabase() {
       // Filter out entries that were deleted locally
       sbEntries = sbEntries.filter(e => {
         if (deletedEntryIds.includes(e.id)) {
-          // Entry was deleted locally — delete from Supabase too
           sbDelete('entries', e.id);
           return false;
         }
@@ -852,21 +900,17 @@ async function loadAllFromSupabase() {
       sbEntries.forEach(sbE => {
         let localE = localMap.get(sbE.id);
         if (localE) {
-          // Entry exists in both — keep the NEWER one (by lastModified)
           let sbMod = sbE.lastModified || 0;
           let localMod = localE.lastModified || 0;
           if (localMod > sbMod) {
-            // Local is newer — keep local, push to cloud
             merged.push(localE);
             sbSave('entries', localE.id, localE);
             localWins++;
           } else {
-            // Cloud is same or newer — keep cloud
             merged.push(sbE);
             cloudWins++;
           }
         } else {
-          // Only in Supabase — keep it
           merged.push(sbE);
           cloudWins++;
         }
@@ -881,6 +925,20 @@ async function loadAllFromSupabase() {
           localOnlyCount++;
         }
       });
+
+      // CRITICAL: Re-apply any entries modified DURING this async sync
+      // Their edits would otherwise be lost when we assign entries = merged
+      if (dirtyEntryIds.size > 0) {
+        dirtyEntryIds.forEach(dirtyId => {
+          let freshLocal = entries.find(e => e.id === dirtyId);
+          if (freshLocal) {
+            let idx = merged.findIndex(e => e.id === dirtyId);
+            if (idx >= 0) merged[idx] = freshLocal;
+            else merged.push(freshLocal);
+          }
+        });
+        console.log('🛡️ Protected ' + dirtyEntryIds.size + ' entries modified during sync');
+      }
 
       entries = merged;
       if (localWins > 0) console.log('🔄 Kept ' + localWins + ' locally-edited entries over stale cloud versions');
@@ -911,7 +969,8 @@ async function loadAllFromSupabase() {
       toast('🔄 ' + updated + ' past ' + (updated === 1 ? 'entry' : 'entries') + ' updated to current rates');
     }
 
-    setDbStatus('Online ✓', 'db-online');
+    lastSyncTime = Date.now();
+    updateSyncStatus();
 
     // Refresh UI after sync
     if (typeof populateDropdowns === 'function') populateDropdowns();
@@ -928,6 +987,9 @@ async function loadAllFromSupabase() {
   } catch (e) {
     console.error('Supabase load error:', e);
     setDbStatus('Offline - Using Cache', 'db-offline');
+  } finally {
+    isSyncing = false;
+    dirtyEntryIds.clear();
   }
 }
 
@@ -977,7 +1039,10 @@ async function retryPendingOps() {
       }
     } catch (e) { console.warn('Retry failed for', op.table, op.id, e); }
   }
-  if (retried > 0) console.log('✅ Retried ' + retried + '/' + ops.length + ' pending operations');
+  if (retried > 0) {
+    console.log('✅ Retried ' + retried + '/' + ops.length + ' pending operations');
+    updateSyncStatus();
+  }
 }
 
 async function sbSaveSettings() {
@@ -987,6 +1052,11 @@ async function sbSaveSettings() {
 
 // Combined save: local + supabase
 function saveAll() {
+  // Stamp lastModified on config data so smart merge keeps local changes
+  let now = Date.now();
+  rateLists.forEach(r => { r.lastModified = now; });
+  doctors.forEach(d => { d.lastModified = now; });
+  collectors.forEach(c => { c.lastModified = now; });
   saveLocal();
   if (dbReady) {
     rateLists.forEach(r => sbSave('rate_lists', r.id, r));
@@ -1000,10 +1070,10 @@ function saveEntry_db(entry) {
   // Stamp lastModified so merge knows which version is newer
   entry.lastModified = Date.now();
   saveLocal();
+  // Track dirty entries during sync so they aren't overwritten by stale merge
+  if (isSyncing) dirtyEntryIds.add(entry.id);
   if (dbReady) {
-    sbSave('entries', entry.id, entry).then(ok => {
-      if (ok) removePendingOp('entries', entry.id);
-    });
+    sbSave('entries', entry.id, entry);
   } else {
     // Offline — queue for retry
     addPendingOp('save', 'entries', entry.id, entry);
@@ -1113,6 +1183,7 @@ async function recoverCloudToLocal() {
   let added = 0;
   cloudOnly.forEach(e => {
     if (!existingIds.has(e.id)) {
+      if (!e.lastModified) e.lastModified = Date.now();
       entries.push(e);
       added++;
     }
@@ -1134,15 +1205,14 @@ async function pushLocalToCloud() {
 
   let ok = 0, fail = 0;
   for (let e of localOnly) {
-    try {
-      let clean = { ...e }; delete clean.id;
-      let { error } = await sb.from('entries').upsert({ id: e.id, data: clean }, { onConflict: 'id' });
-      if (error) fail++; else ok++;
-    } catch (err) { fail++; }
+    if (!e.lastModified) e.lastModified = Date.now();
+    let result = await sbSave('entries', e.id, e);
+    if (result) ok++; else fail++;
   }
+  saveLocal();
 
   if (typeof toast === 'function') toast('☁️ ' + ok + ' entries cloud mein push ho gaye!');
-  alert('☁️ ' + ok + ' entries cloud mein upload!\n' + (fail > 0 ? '⚠️ ' + fail + ' failed.' : ''));
+  alert('☁️ ' + ok + ' entries cloud mein upload!\n' + (fail > 0 ? '⚠️ ' + fail + ' failed (will retry on next sync).' : ''));
 
   // Re-scan
   openRecoveryTool();
@@ -1158,21 +1228,82 @@ async function fullResyncToCloud() {
 
   let ok = 0, fail = 0;
   for (let e of entries) {
-    try {
-      let clean = { ...e }; delete clean.id;
-      let { error } = await sb.from('entries').upsert({ id: e.id, data: clean }, { onConflict: 'id' });
-      if (error) fail++; else ok++;
-    } catch (err) { fail++; }
+    if (!e.lastModified) e.lastModified = Date.now();
+    let result = await sbSave('entries', e.id, e);
+    if (result) ok++; else fail++;
     if ((ok + fail) % 50 === 0) {
       statusEl.innerHTML = '⏳ Progress: ' + (ok + fail) + '/' + entries.length + '...';
     }
   }
+  saveLocal();
 
   if (typeof toast === 'function') toast('🔄 Full sync done: ' + ok + ' ok');
-  alert('🔄 Full re-sync complete!\n✅ ' + ok + ' uploaded\n' + (fail > 0 ? '❌ ' + fail + ' failed' : ''));
+  alert('🔄 Full re-sync complete!\n✅ ' + ok + ' uploaded\n' + (fail > 0 ? '❌ ' + fail + ' failed (queued for retry)' : ''));
 
   // Re-scan
   openRecoveryTool();
+}
+
+// ========== SYNC STATUS + ONLINE/OFFLINE + VISIBILITY RESYNC ==========
+function updateSyncStatus() {
+  let pending = pendingOps.length;
+  if (!dbReady) {
+    setDbStatus('Offline - Local Only', 'db-offline');
+  } else if (pending > 0) {
+    setDbStatus('Online ✓ (' + pending + ' pending)', 'db-online');
+  } else {
+    setDbStatus('Online ✓', 'db-online');
+  }
+}
+
+// Auto-resync when user returns to the tab (if >60s since last sync)
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && dbReady && !isSyncing) {
+    let elapsed = Date.now() - lastSyncTime;
+    if (elapsed > 60000) { // >60 seconds since last sync
+      console.log('👀 Tab visible again, resyncing (last sync ' + Math.round(elapsed / 1000) + 's ago)');
+      loadAllFromSupabase();
+    }
+  }
+});
+
+// Online/offline detection
+window.addEventListener('online', function() {
+  console.log('🌐 Back online');
+  if (dbReady) {
+    updateSyncStatus();
+    loadAllFromSupabase();
+  } else {
+    // Try to reconnect Supabase
+    initSupabase();
+  }
+  if (typeof toast === 'function') toast('🌐 Internet connected — syncing...');
+});
+
+window.addEventListener('offline', function() {
+  console.log('📡 Gone offline');
+  setDbStatus('📡 Offline', 'db-offline');
+  if (typeof toast === 'function') toast('📡 Offline — changes saved locally');
+});
+
+// ========== CONFIG DATA SAVE WITH TIMESTAMPS ==========
+// Stamp lastModified when saving config data (doctors, rateLists, collectors)
+function saveDoctor_db(doc) {
+  doc.lastModified = Date.now();
+  saveLocal();
+  if (dbReady) sbSave('doctors', doc.id, doc);
+}
+
+function saveRateList_db(rl) {
+  rl.lastModified = Date.now();
+  saveLocal();
+  if (dbReady) sbSave('rate_lists', rl.id, rl);
+}
+
+function saveCollector_db(coll) {
+  coll.lastModified = Date.now();
+  saveLocal();
+  if (dbReady) sbSave('collectors', coll.id, coll);
 }
 
 // ========== UTILITIES ==========
