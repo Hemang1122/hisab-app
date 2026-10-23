@@ -274,11 +274,13 @@ function printRegister() {
 function bulkDeleteEntries() {
   let ids = Array.from(document.querySelectorAll('.reg-sel:checked')).map(x => x.dataset.id);
   if (!ids.length) return;
+  if (!confirm('⚠️ ' + ids.length + ' entries permanently delete honge!\n\nKya aap sure hain?')) return;
   entries = entries.filter(e => !ids.includes(e.id));
   saveLocal();
   ids.forEach(id => sbDelete('entries', id));
   renderRegister();
   refreshSidebar();
+  if (typeof toast === 'function') toast('🗑️ ' + ids.length + ' entries deleted');
 }
 
 function deleteEntry(id) {

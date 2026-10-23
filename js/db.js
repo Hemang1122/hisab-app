@@ -352,7 +352,14 @@ create policy "Allow all" on config for all using (true) with check (true);`;
 // ========== LOCAL STORAGE (cache + fallback) ==========
 const LS = {
   get(k, d = null) { try { let v = localStorage.getItem('hv2_' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem('hv2_' + k, JSON.stringify(v)); } catch (e) { } }
+  set(k, v) {
+    try { localStorage.setItem('hv2_' + k, JSON.stringify(v)); return true; }
+    catch (e) {
+      console.error('⚠️ localStorage save failed for', k, e);
+      if (typeof toast === 'function') toast('⚠️ Local save failed for ' + k + '! Storage full?', 5000);
+      return false;
+    }
+  }
 };
 
 // ========== APP DATA ==========
@@ -764,7 +771,25 @@ async function loadAllFromSupabase() {
     if (collData && collData.length) { collectors = collData.map(c => ({ id: c.id, ...c.data })); }
 
     let { data: entData } = await sb.from('entries').select('*');
-    if (entData && entData.length) { entries = entData.map(e => ({ id: e.id, ...e.data })); }
+    if (entData && entData.length) {
+      // MERGE: keep local entries that don't exist in Supabase (prevents data loss)
+      let sbEntries = entData.map(e => ({ id: e.id, ...e.data }));
+      let sbIds = new Set(sbEntries.map(e => e.id));
+      let localOnly = entries.filter(e => !sbIds.has(e.id));
+      entries = sbEntries;
+      if (localOnly.length > 0) {
+        console.warn('🔄 Found ' + localOnly.length + ' local-only entries not in Supabase — keeping & uploading them');
+        entries = entries.concat(localOnly);
+        // Push orphaned local entries to Supabase so they won't be lost again
+        localOnly.forEach(e => sbSave('entries', e.id, e));
+        if (typeof toast === 'function') toast('🔄 ' + localOnly.length + ' local entries synced to cloud');
+      }
+    } else if (entries.length > 0) {
+      // Supabase returned empty but we have local entries — DON'T wipe them
+      console.warn('⚠️ Supabase returned 0 entries but local has ' + entries.length + ' — keeping local & pushing to cloud');
+      entries.forEach(e => sbSave('entries', e.id, e));
+      if (typeof toast === 'function') toast('⚠️ Cloud was empty — uploading ' + entries.length + ' local entries');
+    }
 
     let { data: cfgData } = await sb.from('config').select('*').eq('id', 'settings').single();
     if (cfgData && cfgData.data) settings = { ...settings, ...cfgData.data };
