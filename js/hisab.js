@@ -120,7 +120,7 @@ function generateHisab() {
       e.paymentModes.map(s => s.mode + ' ₹' + s.amount).join(' + ') : (e.paymentMode || 'Cash');
     detailHtml += '<div style="font-size:10px;margin-top:3px"><b>Payment:</b> ' + modeStr +
       ' · Paid: ₹' + (e.paid || 0) + ' · Balance: ₹' + origBal +
-      ' · Doctor: ' + currentDocName + '</div>';
+      ' · Doctor: ' + (doc ? doc.name : (e.doctorName || 'Unknown')) + '</div>';
     detailHtml += '</div>';
 
     let colSpan = isSelf ? 8 : 8;
@@ -421,7 +421,7 @@ function buildCalcBreakdown(filtered, doc, isSelf, from, to) {
   filtered.forEach((e, i) => {
     let rawDocS = 0, rawLabS = 0;
     e.tests.forEach(t => { rawDocS += (t.docShare || 0); rawLabS += (t.labShare || 0); });
-    let origTotal = (e.total || 0) - (e.extra || 0);
+    let origTotal = e.extraInHisab ? (e.total || 0) : ((e.total || 0) - (e.extra || 0));
     let origSubtotal = e.subtotal || (rawDocS + rawLabS);
     let discount = e.discount || 0;
     let factor = (origSubtotal > 0 && discount > 0) ? (1 - discount / origSubtotal) : 1;
