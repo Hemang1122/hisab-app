@@ -829,7 +829,7 @@ function renderMaterials(d) {
 function renderAllEntries(d) {
   let html = '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📋 All Entries (' + d.filtered.length + ')</h3>';
   html += '<div style="overflow-x:auto"><table style="font-size:11px"><thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Doctor</th><th>Tests</th><th style="text-align:right">Total</th><th style="text-align:right">Paid</th><th>Mode</th><th>Operator</th><th>Collector</th></tr></thead><tbody>';
-  d.filtered.sort((a, b) => a.date.localeCompare(b.date)).forEach((e, i) => {
+  d.filtered.sort((a, b) => (b.total || 0) - (a.total || 0)).forEach((e, i) => {
     let liveDoc = (e.doctorId && e.doctorId !== '__self__') ? doctors.find(dc => dc.id === e.doctorId) : null;
     let dn = liveDoc ? liveDoc.name : (e.doctorName || (e.doctorId === '__self__' ? 'Self' : '-'));
     let liveColl = e.collectorId ? collectors.find(c => c.id === e.collectorId) : null;
