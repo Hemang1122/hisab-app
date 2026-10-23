@@ -434,10 +434,12 @@ function calcEntry() {
         tests.map(t => {
           // Find this test's index in the master rate list
           let idx = rl ? rl.tests.findIndex(x => x.name === t.name) : -1;
-          let esc = t.name.replace(/'/g, "\\'");
-          return '<span class="sel-test-chip" style="background:var(--accent);color:white;padding:2px 6px 2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:default;position:relative" onmouseover="this.querySelector(\'.chip-x\').style.display=\'inline-flex\'" onmouseout="this.querySelector(\'.chip-x\').style.display=\'none\'">' +
-            t.name + ' <small>₹' + t.rate + '</small>' +
-            '<span class="chip-x" onclick="removeSelectedTest(' + idx + ')" title="Remove test" style="display:none;background:rgba(255,255,255,.3);color:white;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;margin-left:2px" onmouseover="this.style.background=\'rgba(255,255,255,.5)\'" onmouseout="this.style.background=\'rgba(255,255,255,.3)\'">×</span>' +
+          let displayRate = t.rate || t.splitBase || 0;
+          let rateWarn = !t.rate ? ' style="color:#ffe082"' : '';
+          return '<span class="sel-test-chip" style="background:var(--accent);color:white;padding:2px 6px 2px 8px;border-radius:12px;font-size:11px;display:inline-flex;align-items:center;gap:3px;cursor:default;position:relative">' +
+            t.name + ' <small' + rateWarn + '>₹' + displayRate + '</small>' +
+            (idx >= 0 ? '<span onclick="openQuickTestEdit(' + idx + ')" title="Edit rate/split" style="background:rgba(255,255,255,.25);color:white;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;line-height:1;margin-left:1px" onmouseover="this.style.background=\'rgba(255,255,255,.45)\'" onmouseout="this.style.background=\'rgba(255,255,255,.25)\'">✏️</span>' : '') +
+            '<span class="chip-x" onclick="removeSelectedTest(' + idx + ')" title="Remove test" style="background:rgba(255,255,255,.3);color:white;width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;margin-left:1px" onmouseover="this.style.background=\'rgba(255,255,255,.5)\'" onmouseout="this.style.background=\'rgba(255,255,255,.3)\'">×</span>' +
           '</span>';
         }).join('') +
         '</div>';
