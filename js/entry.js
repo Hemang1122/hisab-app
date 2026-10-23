@@ -181,7 +181,7 @@ function loadTestCheckboxes(rl, docPercent) {
     let rateStyle = !t.rate ? ';color:var(--due);font-weight:700' : '';
     return '<div class="test-row' + incomplete + '" data-testname="' + t.name.toLowerCase() + '" tabindex="0" onkeydown="testRowKeyHandler(event,this)">' +
     '<label style="display:flex;align-items:center;gap:6px;margin:0;flex:1">' +
-    '<input type="checkbox" class="test-cb" data-idx="' + i + '" tabindex="-1" onchange="calcEntry()" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
+    '<input type="checkbox" class="test-cb" data-idx="' + i + '" tabindex="-1" onchange="onTestCheckChange(this,' + i + ')" onkeydown="testRowKeyHandler(event,this.closest(\'.test-row\'))"> ' +
     '<span class="tname">' + t.name + (incomplete ? ' ⚠️' : '') + '</span></label>' +
     '<span class="' + (t.type === 'special' ? 'tag-special' : 'tag-normal') + '">' + (t.type === 'normal' ? 'Normal' : 'Special') + '</span>' +
     '<span class="trate"' + rateClickAttr + ' style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px' + rateStyle + '">&#8377;' + (t.rate || 0) + (!t.rate ? ' ✏️' : '') + '</span></div>';
@@ -258,7 +258,11 @@ function testSearchKeyHandler(event) {
     let visible = document.querySelector('#testCheckboxes .test-row:not([style*="display: none"]):not([style*="display:none"])');
     if (visible) {
       let cb = visible.querySelector('.test-cb');
-      if (cb) { cb.checked = !cb.checked; calcEntry(); }
+      if (cb) {
+        cb.checked = !cb.checked;
+        let idx = parseInt(cb.dataset.idx);
+        onTestCheckChange(cb, idx);
+      }
     }
     let s = document.getElementById('testSearch');
     if (s) { s.value = ''; filterTests(); s.focus(); }
@@ -270,7 +274,11 @@ function testRowKeyHandler(event, row) {
     event.preventDefault();
     event.stopPropagation();
     let cb = row.querySelector('.test-cb');
-    if (cb) { cb.checked = !cb.checked; calcEntry(); }
+    if (cb) {
+      cb.checked = !cb.checked;
+      let idx = parseInt(cb.dataset.idx);
+      onTestCheckChange(cb, idx);
+    }
     row.classList.remove('test-row-focused');
     let s = document.getElementById('testSearch');
     if (s) { s.value = ''; filterTests(); s.focus(); }
@@ -383,6 +391,18 @@ function removeSelectedTest(idx) {
   if (idx < 0) return;
   let cb = document.querySelector('.test-cb[data-idx="' + idx + '"]');
   if (cb) { cb.checked = false; calcEntry(); }
+}
+
+// When a test checkbox is toggled — auto-open quick edit if rate=0 and just checked
+function onTestCheckChange(cb, idx) {
+  calcEntry();
+  if (cb.checked) {
+    let rl = getMasterRL();
+    if (rl && rl.tests[idx] && !rl.tests[idx].rate) {
+      // Rate is 0 — auto-open quick edit so user can enter rate immediately
+      setTimeout(() => openQuickTestEdit(idx), 100);
+    }
+  }
 }
 
 function getSelectedTests() {
