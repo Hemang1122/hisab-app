@@ -540,8 +540,7 @@ function saveEntry() {
       updated: new Date().toISOString()
     };
     entries[idx] = updated;
-    saveLocal();
-    if (dbReady) sbSave('entries', updated.id, updated);
+    saveEntry_db(updated);
     editingEntryId = null;
     updateSaveButtonLabel();
   } else {

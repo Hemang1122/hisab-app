@@ -276,6 +276,7 @@ function bulkDeleteEntries() {
   if (!ids.length) return;
   if (!confirm('⚠️ ' + ids.length + ' entries permanently delete honge!\n\nKya aap sure hain?')) return;
   entries = entries.filter(e => !ids.includes(e.id));
+  ids.forEach(id => trackDeletedEntry(id));
   saveLocal();
   ids.forEach(id => sbDelete('entries', id));
   renderRegister();
@@ -286,6 +287,7 @@ function bulkDeleteEntries() {
 function deleteEntry(id) {
   // Kept for backwards compatibility (sidebar single-delete still uses it)
   entries = entries.filter(e => e.id !== id);
+  trackDeletedEntry(id);
   saveLocal(); sbDelete('entries', id);
   renderRegister(); refreshSidebar();
 }
@@ -302,8 +304,7 @@ function updatePayment(id) {
   e.paid += amt;
   e.balance = Math.max(0, e.total - e.paid);
   e.paymentUpdated = new Date().toISOString();
-  saveLocal();
-  if (dbReady) sbSave('entries', e.id, e);
+  saveEntry_db(e);
   renderRegister();
   refreshSidebar();
   alert('Payment updated! ' + (e.balance > 0 ? 'Baaki: ₹' + e.balance : 'Full Paid ✓'));

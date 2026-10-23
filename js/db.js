@@ -369,6 +369,38 @@ let collectors = LS.get('collectors', []);
 let entries = LS.get('entries', []);
 let settings = LS.get('settings', { revPassword: 'Anita@1234' });
 
+// ========== SYNC SAFETY: Pending ops queue + deleted IDs tracking ==========
+// Pending operations that failed due to network — retried on next sync
+let pendingOps = LS.get('pendingOps', []);  // [{action:'save'|'delete', table, id, data?, ts}]
+// Deleted entry IDs — prevents deleted entries from reappearing from Supabase
+let deletedEntryIds = LS.get('deletedEntryIds', []);
+
+function addPendingOp(action, table, id, data) {
+  // Remove any existing op for same table+id to avoid duplicates
+  pendingOps = pendingOps.filter(op => !(op.table === table && op.id === id));
+  pendingOps.push({ action, table, id, data: data || null, ts: Date.now() });
+  LS.set('pendingOps', pendingOps);
+}
+
+function removePendingOp(table, id) {
+  pendingOps = pendingOps.filter(op => !(op.table === table && op.id === id));
+  LS.set('pendingOps', pendingOps);
+}
+
+function trackDeletedEntry(id) {
+  if (!deletedEntryIds.includes(id)) {
+    deletedEntryIds.push(id);
+    // Keep max 500 deleted IDs to prevent unbounded growth
+    if (deletedEntryIds.length > 500) deletedEntryIds = deletedEntryIds.slice(-500);
+    LS.set('deletedEntryIds', deletedEntryIds);
+  }
+}
+
+function untrackDeletedEntry(id) {
+  deletedEntryIds = deletedEntryIds.filter(x => x !== id);
+  LS.set('deletedEntryIds', deletedEntryIds);
+}
+
 // ========== SEED DATA (runs once if no doctors exist) ==========
 function seedDefaultData() {
   if (doctors.length > 0) return; // Already has data
@@ -579,6 +611,7 @@ function syncEntriesToRateList() {
         e.balance = Math.max(0, e.total - (e.paid || 0));
       }
       e.syncedAt = new Date().toISOString();
+      e.lastModified = Date.now();
       touchedIds.push(e.id);
     }
   });
@@ -798,17 +831,62 @@ async function loadAllFromSupabase() {
 
     let { data: entData } = await sb.from('entries').select('*');
     if (entData && entData.length) {
-      // MERGE: keep local entries that don't exist in Supabase (prevents data loss)
+      // SMART MERGE: compare lastModified timestamps, keep newer version
       let sbEntries = entData.map(e => ({ id: e.id, ...e.data }));
+      let sbMap = new Map(sbEntries.map(e => [e.id, e]));
+      let localMap = new Map(entries.map(e => [e.id, e]));
+      let merged = [];
+      let localWins = 0, cloudWins = 0, localOnlyCount = 0;
+
+      // Filter out entries that were deleted locally
+      sbEntries = sbEntries.filter(e => {
+        if (deletedEntryIds.includes(e.id)) {
+          // Entry was deleted locally — delete from Supabase too
+          sbDelete('entries', e.id);
+          return false;
+        }
+        return true;
+      });
+
+      // Process all Supabase entries
+      sbEntries.forEach(sbE => {
+        let localE = localMap.get(sbE.id);
+        if (localE) {
+          // Entry exists in both — keep the NEWER one (by lastModified)
+          let sbMod = sbE.lastModified || 0;
+          let localMod = localE.lastModified || 0;
+          if (localMod > sbMod) {
+            // Local is newer — keep local, push to cloud
+            merged.push(localE);
+            sbSave('entries', localE.id, localE);
+            localWins++;
+          } else {
+            // Cloud is same or newer — keep cloud
+            merged.push(sbE);
+            cloudWins++;
+          }
+        } else {
+          // Only in Supabase — keep it
+          merged.push(sbE);
+          cloudWins++;
+        }
+      });
+
+      // Add local-only entries (not in Supabase)
       let sbIds = new Set(sbEntries.map(e => e.id));
-      let localOnly = entries.filter(e => !sbIds.has(e.id));
-      entries = sbEntries;
-      if (localOnly.length > 0) {
-        console.warn('🔄 Found ' + localOnly.length + ' local-only entries not in Supabase — keeping & uploading them');
-        entries = entries.concat(localOnly);
-        // Push orphaned local entries to Supabase so they won't be lost again
-        localOnly.forEach(e => sbSave('entries', e.id, e));
-        if (typeof toast === 'function') toast('🔄 ' + localOnly.length + ' local entries synced to cloud');
+      entries.forEach(e => {
+        if (!sbIds.has(e.id) && !deletedEntryIds.includes(e.id)) {
+          merged.push(e);
+          sbSave('entries', e.id, e);
+          localOnlyCount++;
+        }
+      });
+
+      entries = merged;
+      if (localWins > 0) console.log('🔄 Kept ' + localWins + ' locally-edited entries over stale cloud versions');
+      if (localOnlyCount > 0) {
+        console.warn('🔄 Found ' + localOnlyCount + ' local-only entries — uploading to cloud');
+        if (typeof toast === 'function') toast('🔄 ' + localOnlyCount + ' local entries synced to cloud');
       }
     } else if (entries.length > 0) {
       // Supabase returned empty but we have local entries — DON'T wipe them
@@ -822,6 +900,9 @@ async function loadAllFromSupabase() {
 
     saveLocal();
     migrateData(); // Convert old format to new single-rate-list + docPercent
+
+    // Retry any operations that failed earlier (offline saves/deletes)
+    await retryPendingOps();
 
     // Sync every entry to current master rate list (applies any custom splits
     // or price edits made in Rate List to past entries automatically)
@@ -851,16 +932,52 @@ async function loadAllFromSupabase() {
 }
 
 async function sbSave(table, id, data) {
-  if (!dbReady || !sb) return;
+  if (!dbReady || !sb) { addPendingOp('save', table, id, data); return false; }
   try {
     let clean = { ...data }; delete clean.id;
-    await sb.from(table).upsert({ id, data: clean }, { onConflict: 'id' });
-  } catch (e) { console.error('SB save error:', table, id, e); }
+    let { error } = await sb.from(table).upsert({ id, data: clean }, { onConflict: 'id' });
+    if (error) throw error;
+    removePendingOp(table, id);
+    return true;
+  } catch (e) {
+    console.error('SB save error:', table, id, e);
+    addPendingOp('save', table, id, data);
+    return false;
+  }
 }
 
 async function sbDelete(table, id) {
-  if (!dbReady || !sb) return;
-  try { await sb.from(table).delete().eq('id', id); } catch (e) { console.error('SB delete error:', e); }
+  if (!dbReady || !sb) { addPendingOp('delete', table, id); return false; }
+  try {
+    let { error } = await sb.from(table).delete().eq('id', id);
+    if (error) throw error;
+    removePendingOp(table, id);
+    return true;
+  } catch (e) {
+    console.error('SB delete error:', e);
+    addPendingOp('delete', table, id);
+    return false;
+  }
+}
+
+// Retry all pending operations
+async function retryPendingOps() {
+  if (!dbReady || !sb || !pendingOps.length) return;
+  let ops = [...pendingOps]; // snapshot
+  let retried = 0;
+  for (let op of ops) {
+    try {
+      if (op.action === 'save' && op.data) {
+        let clean = { ...op.data }; delete clean.id;
+        let { error } = await sb.from(op.table).upsert({ id: op.id, data: clean }, { onConflict: 'id' });
+        if (!error) { removePendingOp(op.table, op.id); retried++; }
+      } else if (op.action === 'delete') {
+        let { error } = await sb.from(op.table).delete().eq('id', op.id);
+        if (!error) { removePendingOp(op.table, op.id); retried++; }
+      }
+    } catch (e) { console.warn('Retry failed for', op.table, op.id, e); }
+  }
+  if (retried > 0) console.log('✅ Retried ' + retried + '/' + ops.length + ' pending operations');
 }
 
 async function sbSaveSettings() {
@@ -880,8 +997,17 @@ function saveAll() {
 }
 
 function saveEntry_db(entry) {
+  // Stamp lastModified so merge knows which version is newer
+  entry.lastModified = Date.now();
   saveLocal();
-  if (dbReady) sbSave('entries', entry.id, entry);
+  if (dbReady) {
+    sbSave('entries', entry.id, entry).then(ok => {
+      if (ok) removePendingOp('entries', entry.id);
+    });
+  } else {
+    // Offline — queue for retry
+    addPendingOp('save', 'entries', entry.id, entry);
+  }
 }
 
 // ========== DATA RECOVERY ==========
