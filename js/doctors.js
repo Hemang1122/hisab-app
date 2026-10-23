@@ -6,6 +6,7 @@ function openDocModal(id) {
   editingDoc = id || null;
   if (id) {
     let d = doctors.find(x => x.id === id);
+    if (!d) { if (typeof toast === 'function') toast('⚠️ Doctor not found!'); return; }
     document.getElementById('docNameInput').value = d.name;
     document.getElementById('docSplitInput').value = d.docPercent != null ? d.docPercent : 50;
   } else {
@@ -59,9 +60,13 @@ function filterDoctors() {
 }
 
 function deleteDoc(id) {
+  let doc = doctors.find(d => d.id === id);
+  let docName = doc ? doc.name : 'this doctor';
+  if (!confirm('⚠️ "' + docName + '" ko delete karna hai?\n\nYe action undo nahi hoga!')) return;
   doctors = doctors.filter(d => d.id !== id);
   saveAll(); sbDelete('doctors', id);
   renderDoctors(); populateDropdowns();
+  if (typeof toast === 'function') toast('🗑️ ' + docName + ' deleted');
 }
 
 // ========== COLLECTORS ==========
@@ -133,7 +138,11 @@ function filterCollectors() {
 }
 
 function deleteColl(id) {
+  let coll = collectors.find(c => c.id === id);
+  let collName = coll ? coll.name : 'this collector';
+  if (!confirm('⚠️ "' + collName + '" ko delete karna hai?\n\nYe action undo nahi hoga!')) return;
   collectors = collectors.filter(c => c.id !== id);
   saveAll(); sbDelete('collectors', id);
   renderCollectors(); populateDropdowns();
+  if (typeof toast === 'function') toast('🗑️ ' + collName + ' deleted');
 }

@@ -529,12 +529,10 @@ function syncEntriesToRateList() {
     let docPct = getDocPercent(e.doctorId);
     e.tests.forEach(t => {
       // Skip Aarush override tests — their custom splits must not be overwritten
-      if (t.aarushOverride) return;
-      let master = nameMap[keyOf(t.name)];
-      // Aarush custom entries carry their own split — never overwrite the shares.
-      // One-time fix for entries saved before splitBase existed: the custom amount
-      // was stored as the rate; move it to splitBase and restore the original rate.
       if (t.aarushOverride) {
+        // One-time fix for entries saved before splitBase existed: the custom amount
+        // was stored as the rate; move it to splitBase and restore the original rate.
+        let master = nameMap[keyOf(t.name)];
         if (t.splitBase == null && master && t.rate !== master.rate) {
           t.splitBase = t.rate;
           t.rate = master.rate;
@@ -542,6 +540,7 @@ function syncEntriesToRateList() {
         }
         return;
       }
+      let master = nameMap[keyOf(t.name)];
       if (master) {
         let newShares = calcShares(master.rate, docPct, master);
         let masterReagent = master.reagentCost || 0;
@@ -762,13 +761,40 @@ async function loadAllFromSupabase() {
     setDbStatus('Syncing...', 'db-loading');
 
     let { data: rlData } = await sb.from('rate_lists').select('*');
-    if (rlData && rlData.length) { rateLists = rlData.map(r => ({ id: r.id, ...r.data })); }
+    if (rlData && rlData.length) {
+      let sbRL = rlData.map(r => ({ id: r.id, ...r.data }));
+      let sbRLIds = new Set(sbRL.map(r => r.id));
+      let localOnlyRL = rateLists.filter(r => !sbRLIds.has(r.id));
+      rateLists = sbRL;
+      if (localOnlyRL.length > 0) {
+        rateLists = rateLists.concat(localOnlyRL);
+        localOnlyRL.forEach(r => sbSave('rate_lists', r.id, r));
+      }
+    }
 
     let { data: docData } = await sb.from('doctors').select('*');
-    if (docData && docData.length) { doctors = docData.map(d => ({ id: d.id, ...d.data })); }
+    if (docData && docData.length) {
+      let sbDocs = docData.map(d => ({ id: d.id, ...d.data }));
+      let sbDocIds = new Set(sbDocs.map(d => d.id));
+      let localOnlyDocs = doctors.filter(d => !sbDocIds.has(d.id));
+      doctors = sbDocs;
+      if (localOnlyDocs.length > 0) {
+        doctors = doctors.concat(localOnlyDocs);
+        localOnlyDocs.forEach(d => sbSave('doctors', d.id, d));
+      }
+    }
 
     let { data: collData } = await sb.from('collectors').select('*');
-    if (collData && collData.length) { collectors = collData.map(c => ({ id: c.id, ...c.data })); }
+    if (collData && collData.length) {
+      let sbColls = collData.map(c => ({ id: c.id, ...c.data }));
+      let sbCollIds = new Set(sbColls.map(c => c.id));
+      let localOnlyColls = collectors.filter(c => !sbCollIds.has(c.id));
+      collectors = sbColls;
+      if (localOnlyColls.length > 0) {
+        collectors = collectors.concat(localOnlyColls);
+        localOnlyColls.forEach(c => sbSave('collectors', c.id, c));
+      }
+    }
 
     let { data: entData } = await sb.from('entries').select('*');
     if (entData && entData.length) {

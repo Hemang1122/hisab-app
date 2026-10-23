@@ -13,6 +13,7 @@ function openRLModal(id) {
   if (srch) srch.value = '';
   if (id) {
     let rl = rateLists.find(r => r.id === id);
+    if (!rl) { if (typeof toast === 'function') toast('⚠️ Rate list not found!'); return; }
     document.getElementById('rlNameInput').value = rl.name;
     rl.tests.forEach(t => addRLTest(t));
   } else {
@@ -358,7 +359,12 @@ function saveRLTestField(rl, rlId) {
 }
 
 function deleteRL(id) {
+  let rl = rateLists.find(r => r.id === id);
+  let rlName = rl ? rl.name : 'this rate list';
+  let testCount = rl ? rl.tests.length : 0;
+  if (!confirm('⚠️ "' + rlName + '" rate list delete karna hai?\n\n' + testCount + ' tests bhi delete ho jayenge!\n\nYe action undo nahi hoga!')) return;
   rateLists = rateLists.filter(r => r.id !== id);
   saveAll(); sbDelete('rate_lists', id);
   renderRateLists(); populateDropdowns();
+  if (typeof toast === 'function') toast('🗑️ Rate list deleted');
 }

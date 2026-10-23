@@ -113,7 +113,15 @@ async function showRevenue() {
     d.byDoctor[dName].paid += e.paid; d.byDoctor[dName].balance += e.balance;
     d.byDoctor[dName].tests += e.tests.length;
 
-    if (e.paid > 0) d.byPayMode[e.paymentMode] = (d.byPayMode[e.paymentMode] || 0) + e.paid;
+    if (e.paid > 0) {
+      if (e.paymentModes && e.paymentModes.length > 1) {
+        e.paymentModes.forEach(s => {
+          if (s.amount > 0) d.byPayMode[s.mode] = (d.byPayMode[s.mode] || 0) + s.amount;
+        });
+      } else {
+        d.byPayMode[e.paymentMode] = (d.byPayMode[e.paymentMode] || 0) + e.paid;
+      }
+    }
 
     // Collector — with payment mode breakdown + patient list
     let cName = '';
@@ -132,7 +140,13 @@ async function showRevenue() {
       d.byCollector[cName].balance += e.balance;
       d.byCollector[cName].tests += e.tests.length;
       if (e.paid > 0) {
-        d.byCollector[cName].byMode[e.paymentMode] = (d.byCollector[cName].byMode[e.paymentMode] || 0) + e.paid;
+        if (e.paymentModes && e.paymentModes.length > 1) {
+          e.paymentModes.forEach(s => {
+            if (s.amount > 0) d.byCollector[cName].byMode[s.mode] = (d.byCollector[cName].byMode[s.mode] || 0) + s.amount;
+          });
+        } else {
+          d.byCollector[cName].byMode[e.paymentMode] = (d.byCollector[cName].byMode[e.paymentMode] || 0) + e.paid;
+        }
       }
       // Per-doctor breakdown within collector
       if (!d.byCollector[cName].byDoctor[currentDocName]) {
@@ -156,11 +170,23 @@ async function showRevenue() {
     d.byDate[e.date].revenue += e.total;
     d.byDate[e.date].paid += e.paid;
     if (e.paid > 0) {
-      let m = e.paymentMode || 'Cash';
-      d.byDate[e.date].byMode[m] = (d.byDate[e.date].byMode[m] || 0) + e.paid;
-      if (m === 'Cash') d.byDate[e.date].cash += e.paid;
-      else if (m === 'GPay') d.byDate[e.date].gpay += e.paid;
-      else d.byDate[e.date].otherDigital += e.paid;
+      if (e.paymentModes && e.paymentModes.length > 1) {
+        e.paymentModes.forEach(s => {
+          if (s.amount > 0) {
+            let m = s.mode || 'Cash';
+            d.byDate[e.date].byMode[m] = (d.byDate[e.date].byMode[m] || 0) + s.amount;
+            if (m === 'Cash') d.byDate[e.date].cash += s.amount;
+            else if (m === 'GPay') d.byDate[e.date].gpay += s.amount;
+            else d.byDate[e.date].otherDigital += s.amount;
+          }
+        });
+      } else {
+        let m = e.paymentMode || 'Cash';
+        d.byDate[e.date].byMode[m] = (d.byDate[e.date].byMode[m] || 0) + e.paid;
+        if (m === 'Cash') d.byDate[e.date].cash += e.paid;
+        else if (m === 'GPay') d.byDate[e.date].gpay += e.paid;
+        else d.byDate[e.date].otherDigital += e.paid;
+      }
     }
 
     // Cashless tracking
@@ -282,7 +308,7 @@ function printRevSection() {
     sectionTitle,
     [
       '<b>Period:</b> ' + formatDateInv(from) + ' — ' + formatDateInv(to),
-      '<b>Entries:</b> ' + d.totalEntries + ' · <b>Revenue:</b> ₹' + d.totalRevenue.toLocaleString('en-IN'),
+      '<b>Entries:</b> ' + d.filtered.length + ' · <b>Revenue:</b> ₹' + d.totalRevenue.toLocaleString('en-IN'),
       '<b>Generated:</b> ' + genDate
     ],
     content
