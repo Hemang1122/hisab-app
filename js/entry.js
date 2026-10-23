@@ -51,6 +51,11 @@ function updatePayModeSplitInfo() {
 
 function getPayModeSplitsData() {
   // Returns { paymentMode, paymentModes }
+  // If patient paid nothing (balance/partial with ₹0), no payment mode needed
+  let payInfo = getPaymentInfo();
+  if (payInfo.paid === 0 && !payInfo.cashless && !payInfo.hospitalPaid && !payInfo.noCut) {
+    return { paymentMode: '', paymentModes: [] };
+  }
   if (!payModeSplits.length) {
     return { paymentMode: 'Cash', paymentModes: [] };
   }
