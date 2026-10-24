@@ -1043,11 +1043,12 @@ async function loadAllFromSupabase() {
   } catch (e) {
     console.error('Supabase load error:', e);
     lastSyncError = true;
-    updateSyncStatus();
+    // updateSyncStatus() is called in finally after isSyncing is cleared
   } finally {
     isSyncing = false;
     dirtyEntryIds = new Set();
     dirtyDeleteIds = new Set();
+    updateSyncStatus(); // Refresh status now that isSyncing is false
     // If another sync was requested while this one was running, do a follow-up pass
     if (syncRequested) {
       syncRequested = false;
