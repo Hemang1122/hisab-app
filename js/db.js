@@ -363,25 +363,26 @@ const LS = {
 };
 
 // ========== APP DATA ==========
-let rateLists = LS.get('rateLists', []);
-let doctors = LS.get('doctors', []);
-let collectors = LS.get('collectors', []);
-let entries = LS.get('entries', []);
-let settings = LS.get('settings', { revPassword: 'Anita@1234' });
+var rateLists = LS.get('rateLists', []);
+var doctors = LS.get('doctors', []);
+var collectors = LS.get('collectors', []);
+var entries = LS.get('entries', []);
+var settings = LS.get('settings', { revPassword: 'Anita@1234' });
 
 // ========== SYNC SAFETY: Pending ops queue + deleted IDs tracking ==========
 // Pending operations that failed due to network — retried on next sync
-let pendingOps = LS.get('pendingOps', []);  // [{action:'save'|'delete', table, id, data?, ts}]
+var pendingOps = LS.get('pendingOps', []);  // [{action:'save'|'delete', table, id, data?, ts}]
 // Deleted entry IDs — prevents deleted entries from reappearing from Supabase
-let deletedEntryIds = LS.get('deletedEntryIds', []);
+var deletedEntryIds = LS.get('deletedEntryIds', []);
 // Sync lock — prevents overlapping syncs and tracks entries modified during sync
-let isSyncing = false;
-let syncRequested = false; // true if sync requested while one is in-flight → triggers follow-up
-let dirtyEntryIds = new Set(); // entry IDs modified while sync is in-flight
-let dirtyDeleteIds = new Set(); // entry IDs deleted while sync is in-flight
-let lastSyncTime = 0; // timestamp of last successful sync
-let localSaveFailed = false; // true if last saveLocal() failed (quota etc.)
-let lastSyncError = false; // true if last sync attempt threw
+// Using var (not let) so test harness can reset state between test scenarios
+var isSyncing = false;
+var syncRequested = false; // true if sync requested while one is in-flight → triggers follow-up
+var dirtyEntryIds = new Set(); // entry IDs modified while sync is in-flight
+var dirtyDeleteIds = new Set(); // entry IDs deleted while sync is in-flight
+var lastSyncTime = 0; // timestamp of last successful sync
+var localSaveFailed = false; // true if last saveLocal() failed (quota etc.)
+var lastSyncError = false; // true if last sync attempt threw
 
 function addPendingOp(action, table, id, data) {
   // Remove any existing op for same table+id to avoid duplicates
@@ -783,6 +784,9 @@ function saveLocal() {
     localSaveFailed = true;
     updateSyncStatus();
     if (typeof toast === 'function') toast('⚠️ Local storage error — changes may not be saved!', 'error');
+    // EDGE CASE A: localStorage full — emergency push ALL entries to cloud
+    // If browser crashes after this, cloud still has everything
+    emergencyCloudPush();
   } else if (ok && localSaveFailed) {
     localSaveFailed = false;
     updateSyncStatus();
@@ -790,9 +794,63 @@ function saveLocal() {
   return ok;
 }
 
+// EDGE CASE A: Emergency cloud push when localStorage fails
+// Pushes ALL entries to Supabase as a safety net before potential crash
+var _emergencyPushRunning = false;
+async function emergencyCloudPush() {
+  if (_emergencyPushRunning || !dbReady || !sb || !navigator.onLine) return;
+  _emergencyPushRunning = true;
+  console.warn('🚨 Emergency cloud push — localStorage failed, saving all ' + entries.length + ' entries to cloud');
+  try {
+    let ok = 0, fail = 0;
+    for (let e of entries) {
+      if (!e.lastModified) e.lastModified = Date.now();
+      let result = await sbSave('entries', e.id, e);
+      if (result) ok++; else fail++;
+    }
+    // Also push config data
+    for (let r of rateLists) { await sbSave('rate_lists', r.id, r); }
+    for (let d of doctors) { await sbSave('doctors', d.id, d); }
+    for (let c of collectors) { await sbSave('collectors', c.id, c); }
+    console.log('🚨 Emergency push done: ' + ok + ' entries saved, ' + fail + ' failed');
+    if (typeof toast === 'function') toast('☁️ Emergency backup: ' + ok + ' entries saved to cloud', 'success');
+  } catch (e) {
+    console.error('🚨 Emergency cloud push failed:', e);
+  } finally {
+    _emergencyPushRunning = false;
+  }
+}
+
+// EDGE CASE C: Periodic backup snapshot in localStorage under a separate key
+// This survives even if main entries key gets corrupted
+function saveBackupSnapshot() {
+  try {
+    if (entries.length > 0) {
+      let snapshot = {
+        ts: Date.now(),
+        count: entries.length,
+        entries: entries
+      };
+      localStorage.setItem('hv2_entries_backup', JSON.stringify(snapshot));
+    }
+  } catch (e) {
+    // Backup is best-effort, don't fail if storage is full
+  }
+}
+
+function getBackupSnapshot() {
+  try {
+    let raw = localStorage.getItem('hv2_entries_backup');
+    if (!raw) return null;
+    let snap = JSON.parse(raw);
+    if (snap && snap.entries && snap.entries.length > 0) return snap;
+    return null;
+  } catch (e) { return null; }
+}
+
 // ========== SUPABASE ==========
-let sb = null;
-let dbReady = false;
+var sb = null;
+var dbReady = false;
 const SB_URL = 'https://dcjjzejvahjwowtvdnxf.supabase.co';
 const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamp6ZWp2YWhqd293dHZkbnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDQ0NTgsImV4cCI6MjEwNjI4MDQ1OH0.R_iNN28MweCVlxjNf5r5C2rZIjzQUKCP9z3cKYwHRUs';
 
@@ -815,6 +873,22 @@ function initSupabase() {
     sb = supabase.createClient(SB_URL, SB_ANON_KEY, clientOpts);
     dbReady = true;
     setDbStatus('Online ✓', 'db-online');
+
+    // EDGE CASE B: Detect if user cleared browser data (local empty, but cloud likely has data)
+    // If ALL local arrays are empty, try backup snapshot first, then rely on cloud sync
+    if (entries.length === 0 && doctors.length === 0 && rateLists.length === 0) {
+      let backup = getBackupSnapshot();
+      if (backup) {
+        console.warn('🔄 Local data empty — restoring ' + backup.count + ' entries from backup snapshot (age: ' + Math.round((Date.now() - backup.ts) / 60000) + ' min)');
+        entries = backup.entries;
+        saveLocal();
+        if (typeof toast === 'function') toast('🔄 Data restored from backup! Syncing with cloud...', 'success');
+      } else {
+        console.warn('🔄 Local data empty — cloud sync will recover data');
+        if (typeof toast === 'function') toast('🔄 Local data empty — recovering from cloud...', 'info');
+      }
+    }
+
     loadAllFromSupabase();
   } catch (e) {
     console.error('Supabase init error:', e);
@@ -1001,6 +1075,14 @@ async function loadAllFromSupabase() {
         console.warn('🔄 Found ' + localOnlyCount + ' local-only entries — uploading to cloud');
         if (typeof toast === 'function') toast('🔄 ' + localOnlyCount + ' local entries synced to cloud');
       }
+      // EDGE CASE D: Multi-device conflict detection
+      // If cloud entries won over local ones, another device made changes
+      // Notify user so they know their view was updated from elsewhere
+      if (cloudWins > 0 && lastSyncTime > 0) {
+        // Only show toast after first sync (not on initial load)
+        console.log('📱 ' + cloudWins + ' entries updated from another device/session');
+        if (typeof toast === 'function') toast('📱 ' + cloudWins + ' ' + (cloudWins === 1 ? 'entry' : 'entries') + ' updated from another device');
+      }
     } else if (entries.length > 0) {
       // Supabase returned empty but we have local entries — DON'T wipe them
       console.warn('⚠️ Supabase returned 0 entries but local has ' + entries.length + ' — keeping local & pushing to cloud');
@@ -1027,6 +1109,9 @@ async function loadAllFromSupabase() {
     lastSyncTime = Date.now();
     lastSyncError = false;
     updateSyncStatus();
+
+    // EDGE CASE C: Save backup snapshot after every successful sync
+    saveBackupSnapshot();
 
     // Refresh UI after sync
     if (typeof populateDropdowns === 'function') populateDropdowns();
@@ -1146,10 +1231,14 @@ function saveAll() {
 function saveEntry_db(entry) {
   // Stamp lastModified so merge knows which version is newer
   entry.lastModified = Date.now();
-  saveLocal();
+  let localOk = saveLocal();
   // Track dirty entries during sync so they aren't overwritten by stale merge
   if (isSyncing) dirtyEntryIds.add(entry.id);
   if (dbReady && navigator.onLine) {
+    // EDGE CASE A: If localStorage failed, cloud save is the ONLY copy — always push
+    sbSave('entries', entry.id, entry);
+  } else if (!localOk && dbReady) {
+    // localStorage failed but we're "online" — force cloud save attempt
     sbSave('entries', entry.id, entry);
   } else {
     // Offline or not ready — queue for retry
