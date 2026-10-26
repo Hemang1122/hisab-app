@@ -289,6 +289,8 @@ function getRevSectionTitle(section) {
     discounts: '🏷️ Discounts Report',
     extras: '💵 Extras Report',
     materials: '🧪 Materials Report',
+    expenses: '🧾 Expenses Report',
+    contributors: '🏆 Contributors Report',
     entries: '📋 All Entries Report'
   };
   return titles[section] || 'Revenue Report';
@@ -329,6 +331,8 @@ function renderRevenueSection() {
     case 'discounts': html = renderDiscounts(d); break;
     case 'extras': html = renderExtras(d); break;
     case 'materials': html = renderMaterials(d); break;
+    case 'expenses': html = renderExpenses(d); break;
+    case 'contributors': html = renderContributors(d); break;
     case 'cashless': html = renderCashless(d); break;
     case 'entries': html = renderAllEntries(d); break;
   }
@@ -820,6 +824,330 @@ function renderMaterials(d) {
       html += '<span style="background:white;border:1px solid #e8d3a8;padding:2px 8px;border-radius:10px;font-size:11px">' + n + ' · ' + x.count + '×</span>';
     });
     html += '</div></div>';
+  }
+
+  return html;
+}
+
+// ========== EXPENSES (Spreadsheet-style) ==========
+var EXPENSE_CATEGORIES = [
+  { id: 'salary', label: '👤 Staff Salary', color: '#1565c0' },
+  { id: 'distributor', label: '📦 Distributor Bill', color: '#e65100' },
+  { id: 'emi', label: '🏦 EMI / Loan', color: '#6a1b9a' },
+  { id: 'rent', label: '🏠 Rent', color: '#00695c' },
+  { id: 'electricity', label: '⚡ Electricity / Utility', color: '#f9a825' },
+  { id: 'reagent_purchase', label: '🧪 Reagent Purchase', color: '#c62828' },
+  { id: 'maintenance', label: '🔧 Maintenance / Repair', color: '#37474f' },
+  { id: 'transport', label: '🚗 Transport / Fuel', color: '#4527a0' },
+  { id: 'misc', label: '📝 Miscellaneous', color: '#795548' }
+];
+
+function getExpenseCategory(id) {
+  return EXPENSE_CATEGORIES.find(c => c.id === id) || { id: 'misc', label: '📝 Misc', color: '#795548' };
+}
+
+function renderExpenses(d) {
+  // Filter expenses in the selected date range
+  let filtered = (typeof expenses !== 'undefined' ? expenses : []).filter(function(x) {
+    return x.date >= d.from && x.date <= d.to;
+  });
+
+  let totalExp = filtered.reduce(function(s, x) { return s + (x.amount || 0); }, 0);
+  let netProfit = d.totalRevenue - totalExp;
+  let labNetProfit = d.totalLabShare - totalExp;
+
+  // By category totals
+  var byCat = {};
+  filtered.forEach(function(x) {
+    var cat = x.category || 'misc';
+    if (!byCat[cat]) byCat[cat] = { total: 0, count: 0, items: [] };
+    byCat[cat].total += (x.amount || 0);
+    byCat[cat].count++;
+    byCat[cat].items.push(x);
+  });
+
+  var html = '';
+
+  // ── P&L Summary Cards ──
+  html += '<div class="stat-grid">';
+  html += statCard('green', '📈 Total Revenue', d.totalRevenue);
+  html += statCard('red', '🧾 Total Expenses', totalExp);
+  html += statCard(netProfit >= 0 ? 'blue' : 'red', '💰 Net (Revenue - Expense)', netProfit);
+  html += statCard(labNetProfit >= 0 ? 'green' : 'red', '🏥 Lab Net (Lab Share - Expense)', labNetProfit);
+  html += '</div>';
+
+  // ── Expense Category Breakdown — visual bars ──
+  var catList = Object.entries(byCat).sort(function(a, b) { return b[1].total - a[1].total; });
+  if (catList.length) {
+    var maxCat = catList[0][1].total || 1;
+    html += '<div class="card"><h3 style="font-size:14px;margin-bottom:12px">📊 Expense Breakdown by Category</h3>';
+    catList.forEach(function(pair) {
+      var catId = pair[0], c = pair[1];
+      var info = getExpenseCategory(catId);
+      var pct = totalExp > 0 ? Math.round(c.total / totalExp * 100) : 0;
+      var barW = Math.max(3, Math.round(c.total / maxCat * 100));
+      html += '<div style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">' +
+        '<span style="font-size:13px;font-weight:600">' + info.label + '</span>' +
+        '<span style="font-size:13px;font-weight:700;color:' + info.color + '">₹' + c.total.toLocaleString('en-IN') + ' <small style="font-weight:400;color:#999">(' + pct + '%)</small></span>' +
+        '</div>' +
+        '<div style="height:8px;background:var(--n100);border-radius:4px;overflow:hidden">' +
+        '<div style="height:100%;width:' + barW + '%;background:' + info.color + ';border-radius:4px;transition:width .3s"></div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:#999;margin-top:2px">' + c.count + ' ' + (c.count === 1 ? 'entry' : 'entries') + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Add Expense Form ──
+  html += '<div class="card" style="border-left:4px solid var(--brand)">';
+  html += '<h3 style="font-size:14px;margin-bottom:10px">➕ Add New Expense</h3>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+  html += '<div><label style="font-size:11px;color:#666">Date</label><input type="date" id="expDate" value="' + localDateStr() + '" style="width:100%;padding:7px 10px;border:1px solid var(--n200);border-radius:6px;font-size:13px"></div>';
+  html += '<div><label style="font-size:11px;color:#666">Category</label><select id="expCategory" style="width:100%;padding:7px 10px;border:1px solid var(--n200);border-radius:6px;font-size:13px">';
+  EXPENSE_CATEGORIES.forEach(function(c) { html += '<option value="' + c.id + '">' + c.label + '</option>'; });
+  html += '</select></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">';
+  html += '<div><label style="font-size:11px;color:#666">Amount (₹)</label><input type="number" id="expAmount" placeholder="5000" min="0" style="width:100%;padding:7px 10px;border:1px solid var(--n200);border-radius:6px;font-size:13px"></div>';
+  html += '<div><label style="font-size:11px;color:#666">Paid To / Description</label><input type="text" id="expDesc" placeholder="e.g. Ravi bhai salary" style="width:100%;padding:7px 10px;border:1px solid var(--n200);border-radius:6px;font-size:13px"></div>';
+  html += '</div>';
+  html += '<div style="margin-bottom:8px"><label style="font-size:11px;color:#666">Notes (optional)</label><input type="text" id="expNotes" placeholder="Any extra detail..." style="width:100%;padding:7px 10px;border:1px solid var(--n200);border-radius:6px;font-size:13px"></div>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<button class="btn btn-primary" onclick="addExpenseFromForm()" style="padding:8px 20px">➕ Add Expense</button>';
+  html += '<span id="expFormMsg" style="font-size:12px;color:var(--success)"></span>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── Spreadsheet-style table of all expenses ──
+  html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📋 All Expenses — ' + d.from + ' to ' + d.to + ' <small style="font-weight:400;color:#888">(' + filtered.length + ' entries · ₹' + totalExp.toLocaleString('en-IN') + ')</small></h3>';
+  if (!filtered.length) {
+    html += '<div class="empty" style="padding:30px;font-size:13px">Koi expense entry nahi hai is period mein.<br><small style="color:#999">Upar form se add karo — salary, bills, EMI sab track karo!</small></div>';
+  } else {
+    html += '<div style="overflow-x:auto"><table style="font-size:12px;width:100%;border-collapse:collapse">';
+    html += '<thead><tr style="background:var(--n100)">' +
+      '<th style="padding:6px 8px;text-align:left;font-size:11px">#</th>' +
+      '<th style="padding:6px 8px;text-align:left;font-size:11px">Date</th>' +
+      '<th style="padding:6px 8px;text-align:left;font-size:11px">Category</th>' +
+      '<th style="padding:6px 8px;text-align:left;font-size:11px">Description</th>' +
+      '<th style="padding:6px 8px;text-align:right;font-size:11px">Amount</th>' +
+      '<th style="padding:6px 8px;text-align:left;font-size:11px">Notes</th>' +
+      '<th style="padding:6px 8px;text-align:center;font-size:11px">Action</th>' +
+      '</tr></thead><tbody>';
+
+    // Sort by date then by amount descending
+    var sorted = filtered.slice().sort(function(a, b) {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return (b.amount || 0) - (a.amount || 0);
+    });
+
+    // Group by date for spreadsheet look
+    var prevDate = '';
+    sorted.forEach(function(x, i) {
+      var info = getExpenseCategory(x.category);
+      var isNewDate = x.date !== prevDate;
+      prevDate = x.date;
+      html += '<tr style="' + (isNewDate ? 'border-top:2px solid var(--n200)' : '') + '">' +
+        '<td style="padding:5px 8px;color:#999">' + (i + 1) + '</td>' +
+        '<td style="padding:5px 8px;font-weight:' + (isNewDate ? '700' : '400') + '">' + (isNewDate ? formatDate(x.date) : '') + '</td>' +
+        '<td style="padding:5px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;background:' + info.color + '15;color:' + info.color + ';border:1px solid ' + info.color + '30">' + info.label + '</span></td>' +
+        '<td style="padding:5px 8px;font-weight:600">' + (x.description || '-') + '</td>' +
+        '<td style="padding:5px 8px;text-align:right;font-weight:700;color:#c44536;font-size:14px">₹' + (x.amount || 0).toLocaleString('en-IN') + '</td>' +
+        '<td style="padding:5px 8px;font-size:11px;color:#777">' + (x.notes || '') + '</td>' +
+        '<td style="padding:5px 8px;text-align:center"><button onclick="deleteExpenseRow(\'' + x.id + '\')" style="background:none;border:none;cursor:pointer;font-size:14px;color:#c44536" title="Delete">🗑️</button></td>' +
+        '</tr>';
+    });
+
+    // Totals row
+    html += '<tr style="background:var(--n100);font-weight:700;border-top:2px solid var(--n300)">' +
+      '<td colspan="4" style="padding:6px 8px;text-align:right">TOTAL EXPENSES</td>' +
+      '<td style="padding:6px 8px;text-align:right;font-size:15px;color:#c44536">₹' + totalExp.toLocaleString('en-IN') + '</td>' +
+      '<td colspan="2"></td></tr>';
+    html += '</tbody></table></div>';
+  }
+  html += '</div>';
+
+  // ── Monthly summary if range > 1 month ──
+  var byMonth = {};
+  filtered.forEach(function(x) {
+    var m = x.date.substring(0, 7); // YYYY-MM
+    if (!byMonth[m]) byMonth[m] = { total: 0, count: 0 };
+    byMonth[m].total += (x.amount || 0);
+    byMonth[m].count++;
+  });
+  var monthList = Object.entries(byMonth).sort(function(a, b) { return a[0].localeCompare(b[0]); });
+  if (monthList.length > 1) {
+    html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">📅 Monthly Expense Summary</h3>';
+    html += '<div style="overflow-x:auto"><table style="font-size:12px"><thead><tr><th>Month</th><th style="text-align:right">Entries</th><th style="text-align:right">Total Expense</th></tr></thead><tbody>';
+    monthList.forEach(function(pair) {
+      var parts = pair[0].split('-');
+      var label = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+      html += '<tr><td><b>' + label + '</b></td><td style="text-align:right">' + pair[1].count + '</td><td style="text-align:right;font-weight:700;color:#c44536">₹' + pair[1].total.toLocaleString('en-IN') + '</td></tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+
+  return html;
+}
+
+function addExpenseFromForm() {
+  var date = document.getElementById('expDate').value;
+  var category = document.getElementById('expCategory').value;
+  var amount = parseFloat(document.getElementById('expAmount').value) || 0;
+  var description = document.getElementById('expDesc').value.trim();
+  var notes = document.getElementById('expNotes').value.trim();
+
+  if (!date) return alert('Date select karo!');
+  if (amount <= 0) return alert('Amount daalo!');
+  if (!description) return alert('Description daalo — kisko diya, kya tha?');
+
+  var exp = {
+    id: uid(),
+    date: date,
+    category: category,
+    amount: amount,
+    description: description,
+    notes: notes,
+    createdAt: Date.now(),
+    lastModified: Date.now()
+  };
+
+  saveExpense_db(exp);
+  if (typeof toast === 'function') toast('✅ Expense added: ₹' + amount + ' — ' + description);
+
+  // Clear form
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expDesc').value = '';
+  document.getElementById('expNotes').value = '';
+
+  // Re-render
+  renderRevenueSection();
+}
+
+function deleteExpenseRow(id) {
+  if (!confirm('Ye expense entry delete karni hai?')) return;
+  deleteExpense_db(id);
+  if (typeof toast === 'function') toast('🗑️ Expense deleted');
+  renderRevenueSection();
+}
+
+// ========== CONTRIBUTORS (Visual Who's Contributing More) ==========
+function renderContributors(d) {
+  var docEntries = Object.entries(d.byDoctor).sort(function(a, b) { return b[1].revenue - a[1].revenue; });
+  if (!docEntries.length) return '<div class="card"><div class="empty">Koi doctor/hospital data nahi mila.</div></div>';
+
+  var html = '';
+  var maxRev = docEntries[0][1].revenue || 1;
+  var totalRev = d.totalRevenue || 1;
+
+  // Color palette for doctors
+  var COLORS = ['#1565c0', '#2e7d32', '#e65100', '#6a1b9a', '#00695c', '#c62828', '#4527a0', '#ef6c00', '#1b5e20', '#ad1457', '#37474f', '#f57f17'];
+
+  // ── #1: Treemap-style contribution blocks ──
+  html += '<div class="card"><h3 style="font-size:15px;margin-bottom:12px">🏆 Revenue Contribution — Who Brings More?</h3>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:4px;min-height:120px">';
+  docEntries.forEach(function(pair, i) {
+    var name = pair[0], x = pair[1];
+    var pct = Math.round(x.revenue / totalRev * 100);
+    var flexBasis = Math.max(80, pct * 3.5); // min width 80px, scale up
+    var bg = COLORS[i % COLORS.length];
+    var fontSize = pct >= 20 ? '22px' : pct >= 10 ? '18px' : '14px';
+    var nameFontSize = pct >= 15 ? '13px' : '11px';
+    var minH = pct >= 20 ? '110px' : pct >= 10 ? '90px' : '70px';
+    html += '<div style="flex:' + Math.max(1, pct) + ' 1 ' + flexBasis + 'px;background:' + bg + ';color:white;border-radius:8px;padding:12px;min-height:' + minH + ';display:flex;flex-direction:column;justify-content:center;cursor:default;transition:transform .15s;position:relative;overflow:hidden" ' +
+      'title="' + name + ': ₹' + x.revenue.toLocaleString('en-IN') + ' (' + pct + '%)">' +
+      '<div style="font-size:' + fontSize + ';font-weight:800;line-height:1">' + pct + '%</div>' +
+      '<div style="font-size:' + nameFontSize + ';font-weight:600;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>' +
+      '<div style="font-size:10px;opacity:.85;margin-top:2px">₹' + x.revenue.toLocaleString('en-IN') + '</div>' +
+      '<div style="position:absolute;bottom:-10px;right:-10px;font-size:50px;opacity:.08;font-weight:900">' + (i + 1) + '</div>' +
+      '</div>';
+  });
+  html += '</div></div>';
+
+  // ── #2: Horizontal bar race chart ──
+  html += '<div class="card"><h3 style="font-size:14px;margin-bottom:12px">📊 Revenue Race</h3>';
+  docEntries.forEach(function(pair, i) {
+    var name = pair[0], x = pair[1];
+    var pct = Math.round(x.revenue / totalRev * 100);
+    var barW = Math.max(3, Math.round(x.revenue / maxRev * 100));
+    var bg = COLORS[i % COLORS.length];
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+      '<div style="width:28px;height:28px;border-radius:50%;background:' + bg + ';color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">' + (i + 1) + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">' +
+      '<span style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</span>' +
+      '<span style="font-size:12px;font-weight:700;color:' + bg + ';flex-shrink:0;margin-left:8px">₹' + x.revenue.toLocaleString('en-IN') + '</span>' +
+      '</div>' +
+      '<div style="height:10px;background:var(--n100);border-radius:5px;overflow:hidden">' +
+      '<div style="height:100%;width:' + barW + '%;background:' + bg + ';border-radius:5px;transition:width .4s"></div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-top:2px">' +
+      '<span>' + x.count + ' patients · ' + x.tests + ' tests</span>' +
+      '<span>' + pct + '% of total</span>' +
+      '</div>' +
+      '</div></div>';
+  });
+  html += '</div>';
+
+  // ── #3: Detailed stats — Top 5 with cards ──
+  var top5 = docEntries.slice(0, 5);
+  html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🥇 Top 5 Revenue Contributors — Details</h3>';
+  html += '<div style="display:grid;gap:10px">';
+  top5.forEach(function(pair, i) {
+    var name = pair[0], x = pair[1];
+    var pct = Math.round(x.revenue / totalRev * 100);
+    var bg = COLORS[i % COLORS.length];
+    var medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+    var avgTicket = x.count > 0 ? Math.round(x.revenue / x.count) : 0;
+    var testsPerPatient = x.count > 0 ? (x.tests / x.count).toFixed(1) : 0;
+    html += '<div style="border:1px solid var(--n200);border-left:4px solid ' + bg + ';border-radius:8px;padding:12px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center">' +
+      '<div style="font-size:32px;text-align:center">' + medals[i] + '</div>' +
+      '<div>' +
+      '<div style="font-size:15px;font-weight:700;color:' + bg + ';margin-bottom:4px">' + name + '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:4px 12px;font-size:12px">' +
+      '<span>Revenue: <b>₹' + x.revenue.toLocaleString('en-IN') + '</b></span>' +
+      '<span>Share: <b>' + pct + '%</b></span>' +
+      '<span>Patients: <b>' + x.count + '</b></span>' +
+      '<span>Tests: <b>' + x.tests + '</b></span>' +
+      '<span>Avg Ticket: <b>₹' + avgTicket + '</b></span>' +
+      '<span>Tests/Patient: <b>' + testsPerPatient + '</b></span>' +
+      '<span>Lab ₹: <b style="color:var(--paid)">₹' + x.lab.toLocaleString('en-IN') + '</b></span>' +
+      '<span>Doc ₹: <b style="color:#6a1b9a">₹' + x.doc.toLocaleString('en-IN') + '</b></span>' +
+      '<span>Paid: <b>₹' + x.paid.toLocaleString('en-IN') + '</b></span>' +
+      '<span>Balance: <b style="color:' + (x.balance > 0 ? '#c44536' : '#999') + '">₹' + x.balance.toLocaleString('en-IN') + '</b></span>' +
+      '</div></div></div>';
+  });
+  html += '</div></div>';
+
+  // ── #4: Pie-chart style donut (pure CSS) ──
+  if (docEntries.length > 1) {
+    html += '<div class="card"><h3 style="font-size:14px;margin-bottom:10px">🍩 Revenue Share</h3>';
+    html += '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">';
+    // CSS conic-gradient donut
+    var gradParts = [];
+    var cumPct = 0;
+    docEntries.forEach(function(pair, i) {
+      var pct = pair[1].revenue / totalRev * 100;
+      var col = COLORS[i % COLORS.length];
+      gradParts.push(col + ' ' + cumPct + '% ' + (cumPct + pct) + '%');
+      cumPct += pct;
+    });
+    html += '<div style="width:180px;height:180px;border-radius:50%;background:conic-gradient(' + gradParts.join(',') + ');position:relative;flex-shrink:0">' +
+      '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:90px;height:90px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;flex-direction:column">' +
+      '<div style="font-size:18px;font-weight:800">₹' + (d.totalRevenue / 1000).toFixed(0) + 'k</div>' +
+      '<div style="font-size:10px;color:#999">total</div>' +
+      '</div></div>';
+    // Legend
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    docEntries.forEach(function(pair, i) {
+      var pct = Math.round(pair[1].revenue / totalRev * 100);
+      html += '<div style="display:flex;align-items:center;gap:6px;font-size:12px">' +
+        '<div style="width:12px;height:12px;border-radius:3px;background:' + COLORS[i % COLORS.length] + ';flex-shrink:0"></div>' +
+        '<span style="white-space:nowrap">' + pair[0] + ' — <b>' + pct + '%</b></span>' +
+        '</div>';
+    });
+    html += '</div></div></div>';
   }
 
   return html;

@@ -335,6 +335,10 @@ create table if not exists config (
   id text primary key,
   data jsonb not null
 );
+create table if not exists expenses (
+  id text primary key,
+  data jsonb not null
+);
 
 -- Allow public access (for anon key)
 alter table rate_lists enable row level security;
@@ -347,7 +351,10 @@ create policy "Allow all" on rate_lists for all using (true) with check (true);
 create policy "Allow all" on doctors for all using (true) with check (true);
 create policy "Allow all" on collectors for all using (true) with check (true);
 create policy "Allow all" on entries for all using (true) with check (true);
-create policy "Allow all" on config for all using (true) with check (true);`;
+create policy "Allow all" on config for all using (true) with check (true);
+
+alter table expenses enable row level security;
+create policy "Allow all" on expenses for all using (true) with check (true);`;
 
 // ========== LOCAL STORAGE (cache + fallback) ==========
 const LS = {
@@ -367,6 +374,7 @@ var rateLists = LS.get('rateLists', []);
 var doctors = LS.get('doctors', []);
 var collectors = LS.get('collectors', []);
 var entries = LS.get('entries', []);
+var expenses = LS.get('expenses', []);
 var settings = LS.get('settings', { revPassword: 'Anita@1234' });
 
 // ========== SYNC SAFETY: Pending ops queue + deleted IDs tracking ==========
@@ -779,6 +787,7 @@ function saveLocal() {
   ok = LS.set('doctors', doctors) && ok;
   ok = LS.set('collectors', collectors) && ok;
   ok = LS.set('entries', entries) && ok;
+  ok = LS.set('expenses', expenses) && ok;
   ok = LS.set('settings', settings) && ok;
   if (!ok && !localSaveFailed) {
     localSaveFailed = true;
@@ -1092,6 +1101,29 @@ async function loadAllFromSupabase() {
 
     let { data: cfgData } = await sb.from('config').select('*').eq('id', 'settings').single();
     if (cfgData && cfgData.data) settings = { ...settings, ...cfgData.data };
+
+    // Sync expenses
+    try {
+      let { data: expData } = await sb.from('expenses').select('*');
+      if (expData && expData.length) {
+        let localExpMap = {};
+        expenses.forEach(x => { localExpMap[x.id] = x; });
+        expData.forEach(row => {
+          let cloud = row.data || row;
+          let local = localExpMap[cloud.id];
+          if (!local) { expenses.push(cloud); }
+          else if ((cloud.lastModified || 0) > (local.lastModified || 0)) {
+            let idx = expenses.findIndex(x => x.id === cloud.id);
+            if (idx >= 0) expenses[idx] = cloud;
+          }
+          delete localExpMap[cloud.id];
+        });
+        // Push local-only expenses to cloud
+        Object.values(localExpMap).forEach(x => sbSave('expenses', x.id, x));
+      } else if (expenses.length) {
+        expenses.forEach(x => sbSave('expenses', x.id, x));
+      }
+    } catch (expErr) { console.warn('Expense sync skipped:', expErr.message); }
 
     saveLocal();
     migrateData(); // Convert old format to new single-rate-list + docPercent
@@ -1488,6 +1520,22 @@ function saveCollector_db(coll) {
   coll.lastModified = Date.now();
   saveLocal();
   if (dbReady) sbSave('collectors', coll.id, coll);
+}
+
+// ========== EXPENSE CRUD ==========
+function saveExpense_db(exp) {
+  exp.lastModified = Date.now();
+  let idx = expenses.findIndex(x => x.id === exp.id);
+  if (idx >= 0) expenses[idx] = exp;
+  else expenses.push(exp);
+  saveLocal();
+  if (dbReady) sbSave('expenses', exp.id, exp);
+}
+
+function deleteExpense_db(id) {
+  expenses = expenses.filter(x => x.id !== id);
+  saveLocal();
+  if (dbReady && sb) sb.from('expenses').delete().eq('id', id);
 }
 
 // ========== UTILITIES ==========
